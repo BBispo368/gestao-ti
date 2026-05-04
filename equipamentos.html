@@ -325,6 +325,33 @@
   </div>
 </div>
 
+<!-- ── Modal: Login Manual (Atribuir Uso) ── -->
+<div class="modal-overlay" id="loginManualOverlay">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h2 class="modal-title">Iniciar Uso Manual</h2>
+      <button class="modal-close" onclick="fecharLoginManual()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="loginManualForm" style="padding:20px;">
+      <input type="hidden" id="loginEquipId" />
+      <div class="form-group">
+        <label class="form-label">Nome do Usuário *</label>
+        <input class="form-control" type="text" id="lUsuario" placeholder="Ex: João Silva" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Setor *</label>
+        <input class="form-control" type="text" id="lSetor" placeholder="Ex: Financeiro" required />
+      </div>
+      <div class="modal-footer" style="padding:15px 0 0; border:none;">
+        <button type="button" class="btn btn-secondary" onclick="fecharLoginManual()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-right-to-bracket"></i> Iniciar Uso
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast-container"></div>
 

@@ -224,14 +224,19 @@ function renderTabela(lista) {
       <td>${manutencaoLabel(e.manutencao_preventiva?.proxima_manutencao)}</td>
       <td style="text-align:center;">
         <div class="action-btns" style="justify-content:center;">
-          ${e.status === 'Em Uso' ? `
-            <button class="btn-icon-sm" style="color:var(--warning);border-color:var(--warning);" title="Finalizar Uso (Logoff)" onclick="finalizarUso('${e.id}')">
+          ${e.status === 'Em Uso' 
+          ? `<button class="btn-icon-sm done" title="Finalizar Uso" onclick="finalizarUso('${e.id}')">
               <i class="fa-solid fa-right-from-bracket"></i>
-            </button>
-          ` : ''}
-          <button class="btn-icon-sm" title="Editar" onclick="editarEquipamento('${e.id}')">
-            <i class="fa-solid fa-pen"></i>
-          </button>
+             </button>`
+          : e.status === 'Em Estoque'
+            ? `<button class="btn-icon-sm" style="color:var(--success); border-color:var(--success-light);" title="Iniciar Uso" onclick="abrirLoginManual('${e.id}')">
+                <i class="fa-solid fa-right-to-bracket"></i>
+               </button>`
+            : ''
+        }
+        <button class="btn-icon-sm" title="Editar" onclick="editarEquipamento('${e.id}')">
+          <i class="fa-solid fa-pen"></i>
+        </button>
           <button class="btn-icon-sm del" title="Excluir" onclick="deletarEquipamento('${e.id}','${(e.nome||'').replace(/'/g,"\\'")}')">
             <i class="fa-solid fa-trash"></i>
           </button>
@@ -428,5 +433,53 @@ async function registrarMovimentacao(equipId, acao, obs = '') {
     });
   } catch (err) { console.error('Erro ao registrar log:', err); }
 }
+
+// ── Login Manual via Web ─────────────────────────────────────
+window.abrirLoginManual = (id) => {
+  document.getElementById('loginEquipId').value = id;
+  document.getElementById('loginManualOverlay').classList.add('open');
+};
+
+window.fecharLoginManual = () => {
+  document.getElementById('loginManualOverlay').classList.remove('open');
+  document.getElementById('loginManualForm').reset();
+};
+
+document.getElementById('loginManualForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('loginEquipId').value;
+  const user = document.getElementById('lUsuario').value.trim();
+  const setor = document.getElementById('lSetor').value.trim();
+  
+  try {
+    const equip = todosEquipamentos.find(item => item.id === id);
+    await updateDoc(doc(db, 'equipamentos', id), {
+      status: 'Em Uso',
+      usuario_atual: user,
+      setor_atual: setor,
+      data_ultima_ativacao: serverTimestamp(),
+      data_atualizacao: serverTimestamp()
+    });
+
+    // Registrar no Histórico
+    await addDoc(collection(db, 'movimentacoes'), {
+      equipamento_id:   id,
+      equipamento_nome: equip?.nome || 'Manual',
+      usuario_nome:     user,
+      usuario_setor:    setor,
+      acao:             'login',
+      origem:           'painel_web',
+      nome_pc:          equip?.nome_pc || '',
+      mac_address:      equip?.mac_address || '',
+      timestamp:        serverTimestamp()
+    });
+
+    showToast(`Uso iniciado para ${user}!`);
+    fecharLoginManual();
+  } catch (err) {
+    console.error(err);
+    showToast('Erro ao processar login manual.', 'error');
+  }
+});
 
 F('refreshBtn').addEventListener('click', () => location.reload());
