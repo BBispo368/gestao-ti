@@ -216,8 +216,11 @@ class LoginScreenLite(tk.Tk):
                 status = data['fields'].get('status', {}).get('stringValue')
                 if status != "Em Uso":
                     self.deiconify()
+                    self.focus_force()
                     self.attributes("-topmost", True)
-                    self.btn_acessar.config(text="LIBERAR COMPUTADOR")
+                    self.btn_acessar.config(text="LIBERAR COMPUTADOR", state="normal")
+                    self.entry_nome.delete(0, tk.END)
+                    self.entry_setor.delete(0, tk.END)
                     return
         except: pass
         self.after(10000, self.monitor_status)

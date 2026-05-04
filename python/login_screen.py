@@ -221,8 +221,11 @@ class LoginKiosk(ctk.CTk):
                 if status != "Em Uso":
                     # Volta a tela de login
                     self.after(0, self.deiconify)
+                    self.after(0, self.focus_force)
                     self.after(0, lambda: self.attributes("-topmost", True))
-                    self.after(0, lambda: self.btn_acessar.configure(text="LIBERAR COMPUTADOR"))
+                    self.after(0, lambda: self.btn_acessar.configure(text="LIBERAR COMPUTADOR", state="normal"))
+                    self.after(0, lambda: self.entry_nome.delete(0, tk.END))
+                    self.after(0, lambda: self.entry_setor.delete(0, tk.END))
                     return # Para o monitoramento enquanto estiver visível
         except: pass
         
