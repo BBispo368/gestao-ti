@@ -382,9 +382,11 @@ window.concluirManutencao = async (id) => {
         });
       } else {
         // Mesmo sem intervalo, volta o status para Estoque
-        await updateDoc(doc(db, 'equipamentos', man.equipamento_id), {
-            'status': 'Em Estoque',
-            'data_atualizacao': serverTimestamp()
+        // ── ATUALIZA DATA DA ÚLTIMA MANUTENÇÃO NO EQUIPAMENTO ──
+        const equipRef = doc(db, 'equipamentos', man.equipamento_id);
+        await updateDoc(equipRef, {
+          status: 'Em Estoque', // Garante que volta pro estoque ao concluir
+          data_ultima_manutencao: serverTimestamp()
         });
       }
     }

@@ -100,32 +100,35 @@ function loadEquipamentos() {
       else if (d.status === 'Em Estoque') estoque++;
       else if (d.status === 'Em Manutenção') manutencao++;
 
-      // Verificar manutenção preventiva
+      // Lógica de Alertas de Manutenção
       const proxima = d.manutencao_preventiva?.proxima_manutencao;
+      const ultima  = d.data_ultima_manutencao;
+
+      // 1. Checar Agendamento Vencido
       if (proxima) {
-        const dataProxima = new Date(proxima + 'T00:00:00');
-        if (dataProxima <= em7dias) {
-          const vencida = dataProxima < hoje;
-          alertas.push({
-            nome: d.nome || 'Sem nome',
-            patrimonio: d.patrimonio || '—',
-            proxima,
-            vencida
-          });
+        const dtProx = new Date(proxima + 'T00:00:00');
+        if (dtProx < hoje) {
+          alertas.push({ id: doc.id, nome: d.nome, tipo: 'vencida', data: dtProx });
+        } else if (dtProx <= em7dias) {
+          alertas.push({ id: doc.id, nome: d.nome, tipo: 'proxima', data: dtProx });
+        }
+      }
+
+      // 2. Checar Regra de 6 Meses (Se não estiver no alerta acima)
+      if (ultima && !alertas.some(a => a.id === doc.id)) {
+        const dtUlt = ultima.toDate ? ultima.toDate() : new Date(ultima);
+        const dias = Math.floor((hoje - dtUlt) / (1000 * 60 * 60 * 24));
+        if (dias >= 180) {
+          alertas.push({ id: doc.id, nome: d.nome, tipo: 'atrasada_6m', dias });
         }
       }
     });
 
-    // Atualiza KPIs
     kpiTotal.textContent      = total;
     kpiEmUso.textContent      = emUso;
     kpiEstoque.textContent    = estoque;
     kpiManutencao.textContent = manutencao;
-
-    // Atualiza gráfico
     initChart(emUso, estoque, manutencao);
-
-    // Atualiza alertas
     renderAlertas(alertas);
 
     // Atualiza status de conexão e timestamp
@@ -159,19 +162,36 @@ function renderAlertas(alertas) {
   }
 
   alertsList.innerHTML = alertas.map(a => {
-    const tipo = a.vencida ? 'danger' : 'warning';
-    const label = a.vencida ? 'Vencida' : 'Vence em breve';
-    const icon  = a.vencida ? 'fa-circle-xmark' : 'fa-triangle-exclamation';
-    const dataFmt = new Date(a.proxima + 'T00:00:00').toLocaleDateString('pt-BR');
+    let icon = 'fa-triangle-exclamation';
+    let label = 'Próxima';
+    let type = 'warning';
+    let desc = '';
+    let extra = '';
+
+    if (a.tipo === 'vencida') {
+      icon = 'fa-circle-xmark';
+      label = 'Vencida';
+      type = 'danger';
+      desc = `Agendada para: ${a.data.toLocaleDateString('pt-BR')}`;
+      extra = 'pulse-danger';
+    } else if (a.tipo === 'atrasada_6m') {
+      icon = 'fa-clock-rotate-left';
+      label = 'CRÍTICO';
+      type = 'danger';
+      desc = `Sem manutenção há ${a.dias} dias`;
+      extra = 'pulse-danger';
+    } else {
+      desc = `Agendada para: ${a.data.toLocaleDateString('pt-BR')}`;
+    }
+
     return `
-      <div class="alert-box ${tipo}">
+      <div class="alert-box ${type} ${extra}">
         <i class="fa-solid ${icon}"></i>
         <div class="alert-body">
           <strong>${a.nome}</strong>
-          — Patrimônio: ${a.patrimonio}
-          <br><span><i class="fa-regular fa-calendar" style="margin-right:4px;"></i>${label}: ${dataFmt}</span>
+          <br><span><i class="fa-regular fa-clock" style="margin-right:4px;"></i>${desc}</span>
         </div>
-        <span class="badge badge-${tipo}" style="margin-left:auto;white-space:nowrap;">${label}</span>
+        <span class="badge badge-${type}" style="margin-left:auto;white-space:nowrap;">${label}</span>
       </div>`;
   }).join('');
 }

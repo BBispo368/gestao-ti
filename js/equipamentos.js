@@ -170,16 +170,36 @@ function statusBadge(status) {
   return `<span class="badge ${map[status] || 'badge-muted'}">${status || '—'}</span>`;
 }
 
-function manutencaoLabel(proxima) {
-  if (!proxima) return '<span class="text-muted text-sm">—</span>';
-  const hoje = new Date();
-  const data = new Date(proxima + 'T00:00:00');
-  const diff = Math.ceil((data - hoje) / (1000 * 60 * 60 * 24));
-  const fmt  = data.toLocaleDateString('pt-BR');
+function manutencaoLabel(equip) {
+  const proxima = equip?.manutencao_preventiva?.proxima_manutencao;
+  const ultima  = equip?.data_ultima_manutencao;
+  const hoje    = new Date();
+  
+  // 1. Checagem pela Data Agendada (Se existir)
+  if (proxima) {
+    const dataProxima = new Date(proxima + 'T00:00:00');
+    const diff = Math.ceil((dataProxima - hoje) / (1000 * 60 * 60 * 24));
+    const fmt  = dataProxima.toLocaleDateString('pt-BR');
 
-  if (diff < 0)   return `<span class="badge badge-danger"><i class="fa-solid fa-circle-xmark"></i> Vencida (${fmt})</span>`;
-  if (diff <= 7)  return `<span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation"></i> ${fmt}</span>`;
-  return `<span class="text-sm" style="color:var(--text-secondary);">${fmt}</span>`;
+    if (diff < 0)   return `<span class="badge badge-danger pulse-danger"><i class="fa-solid fa-circle-xmark"></i> Vencida (${fmt})</span>`;
+    if (diff <= 7)  return `<span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation"></i> Próxima (${fmt})</span>`;
+  }
+
+  // 2. Regra dos 6 Meses (180 dias) - Independente de agendamento
+  if (ultima) {
+    const dataUltima = ultima.toDate ? ultima.toDate() : new Date(ultima);
+    const diasDesde = Math.floor((hoje - dataUltima) / (1000 * 60 * 60 * 24));
+    
+    if (diasDesde >= 180) {
+      return `<span class="badge badge-danger pulse-danger" title="Mais de 6 meses sem manutenção"><i class="fa-solid fa-clock-rotate-left"></i> Atrasada (+6m)</span>`;
+    }
+  }
+
+  if (proxima) {
+    return `<span class="text-sm" style="color:var(--text-secondary);">${new Date(proxima + 'T00:00:00').toLocaleDateString('pt-BR')}</span>`;
+  }
+
+  return '<span class="text-muted text-sm">—</span>';
 }
 
 function renderTabela(lista) {
@@ -221,7 +241,7 @@ function renderTabela(lista) {
         <div>${e.usuario_atual || '—'}</div>
         <div class="equip-meta">${e.setor_atual || ''}</div>
       </td>
-      <td>${manutencaoLabel(e.manutencao_preventiva?.proxima_manutencao)}</td>
+      <td>${manutencaoLabel(e)}</td>
       <td style="text-align:center;">
         <div class="action-btns" style="justify-content:center;">
           ${e.status === 'Em Uso' 
