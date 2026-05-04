@@ -6,18 +6,18 @@
 
 /* ── Tokens ── */
 :root {
-  --bg-primary:    #0d0f1a;
-  --bg-secondary:  #131726;
-  --bg-tertiary:   #1a1f35;
-  --surface:       #1e2438;
-  --surface-hover: #252a42;
-  --border:        rgba(255,255,255,0.07);
-  --border-strong: rgba(255,255,255,0.14);
+  --bg-primary:    #0f172a; /* Slate 900 */
+  --bg-secondary:  #1e293b; /* Slate 800 */
+  --bg-tertiary:   #334155; /* Slate 700 */
+  --surface:       #1e293b;
+  --surface-hover: #334155;
+  --border:        rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.12);
 
-  --accent:        #6366f1;
-  --accent-hover:  #5254cc;
-  --accent-glow:   rgba(99,102,241,0.25);
-  --accent-light:  rgba(99,102,241,0.12);
+  --accent:        #4f46e5; /* Indigo 600 - Logo Primary */
+  --accent-hover:  #4338ca; /* Indigo 700 */
+  --accent-glow:   rgba(79, 70, 229, 0.25);
+  --accent-light:  rgba(79, 70, 229, 0.12);
 
   --success:       #10b981;
   --success-light: rgba(16,185,129,0.12);
@@ -25,12 +25,12 @@
   --warning-light: rgba(245,158,11,0.12);
   --danger:        #ef4444;
   --danger-light:  rgba(239,68,68,0.12);
-  --info:          #3b82f6;
-  --info-light:    rgba(59,130,246,0.12);
+  --info:          #0ea5e9; /* Sky 500 - Logo Secondary */
+  --info-light:    rgba(14, 165, 233, 0.12);
 
-  --text-primary:  #e2e8f0;
-  --text-secondary:#94a3b8;
-  --text-muted:    #64748b;
+  --text-primary:  #f8fafc; /* Slate 50 */
+  --text-secondary:#94a3b8; /* Slate 400 */
+  --text-muted:    #64748b; /* Slate 500 */
 
   --sidebar-w:     260px;
   --sidebar-w-col: 72px;
@@ -104,12 +104,10 @@ input, select, textarea { font-family: inherit; }
 }
 .logo-icon {
   width: 36px; height: 36px;
-  background: var(--accent);
   border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
   flex-shrink: 0;
-  box-shadow: 0 0 16px var(--accent-glow);
+  object-fit: contain;
 }
 .logo-text {
   font-size: 15px;
