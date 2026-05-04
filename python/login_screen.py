@@ -5,8 +5,14 @@ import json
 import socket
 import threading
 import os
+import ctypes
 from getmac import get_mac_address
-from datetime import datetime
+from datetime import datetime, timezone
+
+# Otimização: Define prioridade baixa para o processo (0x00004000 = BELOW_NORMAL_PRIORITY_CLASS)
+try:
+    ctypes.windll.kernel32.SetPriorityClass(ctypes.windll.kernel32.GetCurrentProcess(), 0x00004000)
+except: pass
 
 # ============================================================
 # CONFIGURAÇÕES DO FIREBASE
@@ -15,6 +21,9 @@ FIREBASE_PROJECT_ID = "gestao-ti-bd"
 FIREBASE_API_KEY    = "AIzaSyBgscAf7JfiiEwLNC2QC5HMLiWo_lKvMvI"
 BASE_URL = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents"
 OFFLINE_FILE = "offline_log.json"
+
+# Sessão persistente para economia de recursos
+http = requests.Session()
 
 def get_pc_info():
     try:
@@ -125,7 +134,7 @@ class LoginKiosk(ctk.CTk):
             now = datetime.utcnow().isoformat() + "Z"
             url = f"{BASE_URL}/equipamentos?key={FIREBASE_API_KEY}"
             payload = {"fields": {"nome": {"stringValue": f"NOVO: {self.hostname}"}, "marca": {"stringValue": "AUTO-DETECT"}, "mac_address": {"stringValue": self.mac}, "nome_pc": {"stringValue": self.hostname}, "status": {"stringValue": "Em Estoque"}, "data_cadastro": {"timestampValue": now}}}
-            response = requests.post(url, json=payload, timeout=5)
+            response = http.post(url, json=payload, timeout=5)
             res_data = response.json()
             if 'name' in res_data:
                 self.equipamento_id = res_data['name'].split('/')[-1]
@@ -184,7 +193,7 @@ class LoginKiosk(ctk.CTk):
 
             # 2. Atualiza Equipamento
             update_url = f"{BASE_URL}/equipamentos/{self.equipamento_id}?updateMask.fieldPaths=status&updateMask.fieldPaths=usuario_atual&updateMask.fieldPaths=setor_atual&updateMask.fieldPaths=data_ultima_ativacao&key={FIREBASE_API_KEY}"
-            requests.patch(update_url, json={"fields": {"status": {"stringValue": "Em Uso"}, "usuario_atual": {"stringValue": nome}, "setor_atual": {"stringValue": setor}, "data_ultima_ativacao": {"timestampValue": now}}}, timeout=5)
+            http.patch(update_url, json={"fields": {"status": {"stringValue": "Em Uso"}, "usuario_atual": {"stringValue": nome}, "setor_atual": {"stringValue": setor}, "data_ultima_ativacao": {"timestampValue": now}}}, timeout=5)
             
             # 3. Registra Movimentação de Login
             mov_url = f"{BASE_URL}/movimentacoes?key={FIREBASE_API_KEY}"
@@ -204,7 +213,7 @@ class LoginKiosk(ctk.CTk):
         
         try:
             url = f"{BASE_URL}/equipamentos/{self.equipamento_id}?key={FIREBASE_API_KEY}"
-            response = requests.get(url, timeout=5)
+            response = http.get(url, timeout=5)
             data = response.json()
             
             if 'fields' in data:
@@ -218,7 +227,7 @@ class LoginKiosk(ctk.CTk):
         except: pass
         
         # Continua monitorando se estiver escondido
-        self.after(10000, self.monitor_status)
+        self.after(30000, self.monitor_status)
 
     def save_offline_log(self, nome, setor):
         log_entry = {

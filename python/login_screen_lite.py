@@ -2,14 +2,22 @@ import tkinter as tk
 from tkinter import messagebox
 import requests
 import socket
-import os
 import json
+import ctypes
 from datetime import datetime, timezone
 from getmac import get_mac_address
+
+# Otimização: Define prioridade baixa para o processo (0x00004000 = BELOW_NORMAL_PRIORITY_CLASS)
+try:
+    ctypes.windll.kernel32.SetPriorityClass(ctypes.windll.kernel32.GetCurrentProcess(), 0x00004000)
+except: pass
 
 # --- CONFIGURAÇÃO ---
 FIREBASE_API_KEY = "AIzaSyBgscAf7JfiiEwLNC2QC5HMLiWo_lKvMvI"
 BASE_URL = "https://firestore.googleapis.com/v1/projects/gestao-ti-bd/databases/(default)/documents"
+
+# Sessão persistente para economia de recursos
+http = requests.Session()
 
 class LoginScreenLite(tk.Tk):
     def __init__(self):
@@ -99,7 +107,7 @@ class LoginScreenLite(tk.Tk):
                     "limit": 1
                 }
             }
-            response = requests.post(url, json=query, timeout=5)
+            response = http.post(url, json=query, timeout=5)
             results = response.json()
             
             if results and 'document' in results[0]:
@@ -165,7 +173,7 @@ class LoginScreenLite(tk.Tk):
                 now = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
                 # Atualiza Equipamento
                 update_url = f"{BASE_URL}/equipamentos/{self.equipamento_id}?updateMask.fieldPaths=status&updateMask.fieldPaths=usuario_atual&updateMask.fieldPaths=setor_atual&key={FIREBASE_API_KEY}"
-                requests.patch(update_url, json={"fields": {
+                http.patch(update_url, json={"fields": {
                     "status": {"stringValue": "Em Uso"},
                     "usuario_atual": {"stringValue": nome},
                     "setor_atual": {"stringValue": setor}
@@ -188,12 +196,12 @@ class LoginScreenLite(tk.Tk):
                 
                 # Em vez de fechar, esconde e monitora
                 self.withdraw()
-                self.after(10000, self.monitor_status)
+                self.after(30000, self.monitor_status)
                 
             except:
                 messagebox.showinfo("Offline", "Login registrado localmente. Bom trabalho!")
                 self.withdraw()
-                self.after(10000, self.monitor_status)
+                self.after(30000, self.monitor_status)
         else:
             self.destroy()
 
@@ -202,7 +210,7 @@ class LoginScreenLite(tk.Tk):
         if not self.equipamento_id: return
         try:
             url = f"{BASE_URL}/equipamentos/{self.equipamento_id}?key={FIREBASE_API_KEY}"
-            response = requests.get(url, timeout=5)
+            response = http.get(url, timeout=5)
             data = response.json()
             if 'fields' in data:
                 status = data['fields'].get('status', {}).get('stringValue')
