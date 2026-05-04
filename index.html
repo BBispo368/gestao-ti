@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Inventário TI</title>
+  <meta name="description" content="Painel de gestão de ativos de TI e manutenções preventivas." />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">💻</div>
+        <span class="logo-text">Inventário TI</span>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle" title="Recolher menu">
+        <i class="fa-solid fa-chevron-left" id="toggleIcon"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <p class="nav-section-label">Visão Geral</p>
+      <ul>
+        <li class="nav-item active">
+          <a href="index.html" title="Dashboard">
+            <i class="fa-solid fa-gauge-high"></i>
+            <span>Dashboard</span>
+          </a>
+        </li>
+      </ul>
+
+      <p class="nav-section-label">Gestão</p>
+      <ul>
+        <li class="nav-item">
+          <a href="equipamentos.html" title="Equipamentos">
+            <i class="fa-solid fa-computer"></i>
+            <span>Equipamentos</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="movimentacoes.html" title="Movimentações">
+            <i class="fa-solid fa-right-left"></i>
+            <span>Movimentações</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="manutencoes.html" title="Manutenções">
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+            <span>Manutenções</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar">A</div>
+        <div class="user-details">
+          <div class="user-name">Administrador</div>
+          <div class="user-role">Painel Web</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main Wrapper ── -->
+  <div class="main-wrapper">
+
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="header-left">
+        <p class="page-breadcrumb">Inventário TI / <span>Dashboard</span></p>
+      </div>
+      <div class="header-right">
+        <div class="status-indicator">
+          <span class="status-dot"></span>
+          <span id="connectionStatus">Conectado</span>
+        </div>
+        <button class="header-btn" id="alertBtn" title="Alertas de manutenção">
+          <i class="fa-solid fa-bell"></i>
+          <span class="badge" id="alertBadge" style="display:none">0</span>
+        </button>
+        <button class="header-btn" title="Recarregar dados" id="refreshBtn">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Dashboard</h1>
+          <p id="lastUpdate">Carregando dados...</p>
+        </div>
+        <div class="page-header-actions">
+          <a href="equipamentos.html" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> Novo Equipamento
+          </a>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card accent">
+          <div class="kpi-icon"><i class="fa-solid fa-computer"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-label">Total de Ativos</div>
+            <div class="kpi-value" id="kpiTotal">—</div>
+            <div class="kpi-sub">equipamentos cadastrados</div>
+          </div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-label">Em Uso</div>
+            <div class="kpi-value" id="kpiEmUso">—</div>
+            <div class="kpi-sub">ativos em operação</div>
+          </div>
+        </div>
+        <div class="kpi-card accent" style="--accent:#8b5cf6;">
+          <div class="kpi-icon" style="background:rgba(139,92,246,0.12);color:#8b5cf6;">
+            <i class="fa-solid fa-box-archive"></i>
+          </div>
+          <div class="kpi-info">
+            <div class="kpi-label">Em Estoque</div>
+            <div class="kpi-value" id="kpiEstoque">—</div>
+            <div class="kpi-sub">disponíveis para ativação</div>
+          </div>
+        </div>
+        <div class="kpi-card warning">
+          <div class="kpi-icon"><i class="fa-solid fa-wrench"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-label">Em Manutenção</div>
+            <div class="kpi-value" id="kpiManutencao">—</div>
+            <div class="kpi-sub">aguardando reparo</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts + Alerts -->
+      <div class="charts-grid">
+
+        <!-- Donut Chart -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Distribuição de Status</div>
+              <div class="card-subtitle">Visão geral do inventário</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="statusChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Alertas de Manutenção -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title"><i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);margin-right:6px;"></i>Alertas de Manutenção</div>
+              <div class="card-subtitle">Preventivas vencendo nos próximos 7 dias</div>
+            </div>
+            <a href="manutencoes.html" class="btn btn-secondary btn-sm">Ver todas</a>
+          </div>
+          <div id="alertsList">
+            <div class="empty-state">
+              <i class="fa-solid fa-circle-check" style="color:var(--success);opacity:1;"></i>
+              <h3>Nenhum alerta pendente</h3>
+              <p>Todas as manutenções estão em dia.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Últimas Movimentações -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Últimas Movimentações</div>
+            <div class="card-subtitle">Ativações e logins recentes</div>
+          </div>
+          <a href="movimentacoes.html" class="btn btn-secondary btn-sm">
+            <i class="fa-solid fa-arrow-right"></i> Ver histórico completo
+          </a>
+        </div>
+        <div class="table-wrapper">
+          <table id="movimentacoesTable">
+            <thead>
+              <tr>
+                <th>Equipamento</th>
+                <th>Usuário</th>
+                <th>Setor</th>
+                <th>Ação</th>
+                <th>Data / Hora</th>
+              </tr>
+            </thead>
+            <tbody id="movimentacoesBody">
+              <tr>
+                <td colspan="5">
+                  <div class="empty-state">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <h3>Aguardando dados</h3>
+                    <p>Configure o Firebase para exibir as movimentações.</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- /main-wrapper -->
+</div><!-- /app-shell -->
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<!-- Firebase + Dashboard JS -->
+<script type="module" src="js/dashboard.js"></script>
+
+<!-- Sidebar Toggle -->
+<script>
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('sidebarToggle');
+  const toggleIcon = document.getElementById('toggleIcon');
+
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    if (sidebar.classList.contains('collapsed')) {
+      toggleIcon.className = 'fa-solid fa-chevron-right';
+    } else {
+      toggleIcon.className = 'fa-solid fa-chevron-left';
+    }
+    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  // Restore state
+  if (localStorage.getItem('sidebarCollapsed') === 'true') {
+    sidebar.classList.add('collapsed');
+    toggleIcon.className = 'fa-solid fa-chevron-right';
+  }
+
+  // Refresh btn
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    location.reload();
+  });
+
+  // Toast helper (global)
+  function showToast(msg, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    const icons = { success: 'fa-circle-check', error: 'fa-circle-xmark', warning: 'fa-triangle-exclamation' };
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.success}" style="color:var(--${type === 'error' ? 'danger' : type});"></i> ${msg}`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+  }
+  window.showToast = showToast;
+</script>
+
+</body>
+</html>

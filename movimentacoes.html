@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Movimentações — Inventário TI</title>
+  <meta name="description" content="Histórico completo de ativações, logins e movimentações de equipamentos de TI." />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    .filters-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .filters-bar .search-bar { flex: 1; min-width: 220px; }
+    .filter-select, .filter-date {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-strong);
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      padding: 9px 14px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: border-color var(--transition);
+    }
+    .filter-select:focus, .filter-date:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .filter-date { color-scheme: dark; }
+
+    .filters-row-2 {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .date-range {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .date-range span { white-space: nowrap; }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .stat-chip i { font-size: 16px; }
+    .stat-chip .label { font-size: 11px; color: var(--text-muted); }
+    .stat-chip .value { font-size: 18px; font-weight: 700; line-height: 1; }
+
+    .equip-name { font-weight: 600; font-size: 13px; }
+    .equip-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    .timeline-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    .btn-clear {
+      background: none;
+      border: 1px solid var(--border-strong);
+      color: var(--text-muted);
+      border-radius: var(--radius-sm);
+      padding: 9px 14px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition);
+    }
+    .btn-clear:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-light); }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .pagination-btns { display: flex; gap: 6px; }
+    .page-btn {
+      width: 32px; height: 32px;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      color: var(--text-secondary);
+      font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .page-btn:hover:not(:disabled) { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+    .page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .page-btn:disabled { opacity: 0.35; cursor: default; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">💻</div>
+        <span class="logo-text">Inventário TI</span>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fa-solid fa-chevron-left" id="toggleIcon"></i>
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-label">Visão Geral</p>
+      <ul>
+        <li class="nav-item"><a href="index.html"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a></li>
+      </ul>
+      <p class="nav-section-label">Gestão</p>
+      <ul>
+        <li class="nav-item"><a href="equipamentos.html"><i class="fa-solid fa-computer"></i><span>Equipamentos</span></a></li>
+        <li class="nav-item active"><a href="movimentacoes.html"><i class="fa-solid fa-right-left"></i><span>Movimentações</span></a></li>
+        <li class="nav-item"><a href="manutencoes.html"><i class="fa-solid fa-screwdriver-wrench"></i><span>Manutenções</span></a></li>
+      </ul>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar">A</div>
+        <div class="user-details">
+          <div class="user-name">Administrador</div>
+          <div class="user-role">Painel Web</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-wrapper">
+    <header class="top-header">
+      <div class="header-left">
+        <p class="page-breadcrumb">Inventário TI / <span>Movimentações</span></p>
+      </div>
+      <div class="header-right">
+        <div class="status-indicator">
+          <span class="status-dot"></span>
+          <span id="connectionStatus">Conectado</span>
+        </div>
+        <button class="header-btn" title="Recarregar" id="refreshBtn">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Histórico de Movimentações</h1>
+          <p id="subtitleCount">Carregando registros...</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-secondary" id="btnExportar">
+            <i class="fa-solid fa-file-csv"></i> Exportar CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="stats-bar">
+        <div class="stat-chip">
+          <i class="fa-solid fa-list-check" style="color:var(--accent);"></i>
+          <div><div class="label">Total Exibido</div><div class="value" id="sTotal">—</div></div>
+        </div>
+        <div class="stat-chip">
+          <i class="fa-solid fa-right-to-bracket" style="color:var(--success);"></i>
+          <div><div class="label">Logins</div><div class="value" id="sLogins">—</div></div>
+        </div>
+        <div class="stat-chip">
+          <i class="fa-solid fa-plug-circle-check" style="color:var(--accent);"></i>
+          <div><div class="label">Ativações</div><div class="value" id="sAtivacoes">—</div></div>
+        </div>
+        <div class="stat-chip">
+          <i class="fa-solid fa-wrench" style="color:var(--warning);"></i>
+          <div><div class="label">Manutenções</div><div class="value" id="sManutencoes">—</div></div>
+        </div>
+        <div class="stat-chip">
+          <i class="fa-solid fa-right-from-bracket" style="color:var(--text-muted);"></i>
+          <div><div class="label">Logoffs</div><div class="value" id="sLogoffs">—</div></div>
+        </div>
+      </div>
+
+      <!-- Filtros Linha 1 -->
+      <div class="filters-bar">
+        <div class="search-bar">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="searchInput" placeholder="Buscar por equipamento, usuário ou PC..." />
+        </div>
+        <select class="filter-select" id="filterAcao">
+          <option value="">Todas as ações</option>
+          <option value="login">Login</option>
+          <option value="logoff">Logoff</option>
+          <option value="ativacao">Ativação</option>
+          <option value="manutencao">Manutenção</option>
+        </select>
+        <select class="filter-select" id="filterSetor">
+          <option value="">Todos os setores</option>
+        </select>
+        <button class="btn-clear" id="btnLimpar">
+          <i class="fa-solid fa-filter-circle-xmark"></i> Limpar
+        </button>
+      </div>
+
+      <!-- Filtros Linha 2 — Datas -->
+      <div class="filters-row-2">
+        <div class="date-range">
+          <span>De:</span>
+          <input type="date" class="filter-date" id="filterDe" />
+        </div>
+        <div class="date-range">
+          <span>Até:</span>
+          <input type="date" class="filter-date" id="filterAte" />
+        </div>
+        <button class="btn-clear" id="btnHoje" style="gap:6px;border-color:var(--accent);color:var(--accent);background:var(--accent-light);">
+          <i class="fa-solid fa-calendar-day"></i> Hoje
+        </button>
+        <button class="btn-clear" id="btnSemana">
+          <i class="fa-solid fa-calendar-week"></i> Esta Semana
+        </button>
+        <button class="btn-clear" id="btnMes">
+          <i class="fa-solid fa-calendar"></i> Este Mês
+        </button>
+      </div>
+
+      <!-- Tabela -->
+      <div class="card" style="padding:0;">
+        <div style="padding:16px 20px 0; display:flex; justify-content:space-between; align-items:center;">
+          <p class="table-count" style="margin:0;">
+            Exibindo <span id="countDisplay" style="color:var(--accent);font-weight:600;">0</span> registro(s)
+          </p>
+          <select class="filter-select" id="filterLimite" style="padding:6px 10px;font-size:12px;">
+            <option value="50">50 por página</option>
+            <option value="100">100 por página</option>
+            <option value="250">250 por página</option>
+            <option value="0">Todos</option>
+          </select>
+        </div>
+        <div class="table-wrapper" style="margin-top:12px;">
+          <table id="movTable">
+            <thead>
+              <tr>
+                <th>Data / Hora</th>
+                <th>Equipamento</th>
+                <th>Usuário</th>
+                <th>Setor</th>
+                <th>Ação</th>
+                <th>Origem</th>
+              </tr>
+            </thead>
+            <tbody id="movTableBody">
+              <tr><td colspan="6">
+                <div class="empty-state">
+                  <i class="fa-solid fa-circle-notch fa-spin"></i>
+                  <h3>Carregando...</h3>
+                </div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="paginationBar">
+          <span id="paginationInfo"></span>
+          <div class="pagination-btns" id="paginationBtns"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<script type="module" src="js/movimentacoes.js"></script>
+<script>
+  // Sidebar
+  const sidebar   = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('sidebarToggle');
+  const toggleIcon= document.getElementById('toggleIcon');
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleIcon.className = sidebar.classList.contains('collapsed')
+      ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left';
+    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+  });
+  if (localStorage.getItem('sidebarCollapsed') === 'true') {
+    sidebar.classList.add('collapsed');
+    toggleIcon.className = 'fa-solid fa-chevron-right';
+  }
+  document.getElementById('refreshBtn').addEventListener('click', () => location.reload());
+
+  function showToast(msg, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    const icons = { success: 'fa-circle-check', error: 'fa-circle-xmark', warning: 'fa-triangle-exclamation' };
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.success}" style="color:var(--${type === 'error' ? 'danger' : type});"></i> ${msg}`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+  }
+  window.showToast = showToast;
+</script>
+</body>
+</html>

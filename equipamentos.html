@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equipamentos — Inventário TI</title>
+  <meta name="description" content="Cadastro e gestão de ativos de TI." />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    .filters-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .filters-bar .search-bar { flex: 1; min-width: 220px; }
+    .filter-select {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-strong);
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      padding: 9px 14px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: border-color var(--transition);
+    }
+    .filter-select:focus { outline: none; border-color: var(--accent); }
+
+    .equip-name { font-weight: 600; }
+    .equip-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    .action-btns { display: flex; gap: 6px; }
+    .btn-icon-sm {
+      width: 30px; height: 30px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text-secondary);
+      transition: all var(--transition);
+      cursor: pointer;
+    }
+    .btn-icon-sm:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+    .btn-icon-sm.del:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+
+    .table-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .table-count span { color: var(--accent); font-weight: 600; }
+
+    /* Confirm modal */
+    .confirm-modal { max-width: 400px; text-align: center; }
+    .confirm-modal .confirm-icon {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--danger-light);
+      color: var(--danger);
+      font-size: 22px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+    }
+    .confirm-modal h3 { font-size: 17px; margin-bottom: 8px; }
+    .confirm-modal p { color: var(--text-muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">💻</div>
+        <span class="logo-text">Inventário TI</span>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fa-solid fa-chevron-left" id="toggleIcon"></i>
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-label">Visão Geral</p>
+      <ul>
+        <li class="nav-item"><a href="index.html"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a></li>
+      </ul>
+      <p class="nav-section-label">Gestão</p>
+      <ul>
+        <li class="nav-item active"><a href="equipamentos.html"><i class="fa-solid fa-computer"></i><span>Equipamentos</span></a></li>
+        <li class="nav-item"><a href="movimentacoes.html"><i class="fa-solid fa-right-left"></i><span>Movimentações</span></a></li>
+        <li class="nav-item"><a href="manutencoes.html"><i class="fa-solid fa-screwdriver-wrench"></i><span>Manutenções</span></a></li>
+      </ul>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar">A</div>
+        <div class="user-details">
+          <div class="user-name">Administrador</div>
+          <div class="user-role">Painel Web</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-wrapper">
+    <header class="top-header">
+      <div class="header-left">
+        <p class="page-breadcrumb">Inventário TI / <span>Equipamentos</span></p>
+      </div>
+      <div class="header-right">
+        <div class="status-indicator">
+          <span class="status-dot"></span>
+          <span id="connectionStatus">Conectado</span>
+        </div>
+        <button class="header-btn" title="Recarregar" id="refreshBtn">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Equipamentos</h1>
+          <p id="subtitleCount">Carregando ativos...</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-secondary" id="btnExportar">
+            <i class="fa-solid fa-file-csv"></i> Exportar CSV
+          </button>
+          <button class="btn btn-primary" id="btnNovoEquipamento">
+            <i class="fa-solid fa-plus"></i> Novo Equipamento
+          </button>
+        </div>
+      </div>
+
+      <!-- KPIs compactos -->
+      <div class="kpi-grid" style="margin-bottom:20px;">
+        <div class="kpi-card accent">
+          <div class="kpi-icon"><i class="fa-solid fa-layer-group"></i></div>
+          <div class="kpi-info"><div class="kpi-label">Total</div><div class="kpi-value" id="kTotal">—</div></div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
+          <div class="kpi-info"><div class="kpi-label">Em Uso</div><div class="kpi-value" id="kEmUso">—</div></div>
+        </div>
+        <div class="kpi-card" style="border-left:3px solid #8b5cf6;">
+          <div class="kpi-icon" style="background:rgba(139,92,246,0.12);color:#8b5cf6;"><i class="fa-solid fa-box-archive"></i></div>
+          <div class="kpi-info"><div class="kpi-label">Em Estoque</div><div class="kpi-value" id="kEstoque">—</div></div>
+        </div>
+        <div class="kpi-card warning">
+          <div class="kpi-icon"><i class="fa-solid fa-wrench"></i></div>
+          <div class="kpi-info"><div class="kpi-label">Em Manutenção</div><div class="kpi-value" id="kManutencao">—</div></div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-bar">
+        <div class="search-bar">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="searchInput" placeholder="Buscar por nome, modelo, série ou patrimônio..." />
+        </div>
+        <select class="filter-select" id="filterStatus">
+          <option value="">Todos os status</option>
+          <option value="Em Uso">Em Uso</option>
+          <option value="Em Estoque">Em Estoque</option>
+          <option value="Em Manutenção">Em Manutenção</option>
+        </select>
+        <select class="filter-select" id="filterSetor">
+          <option value="">Todos os setores</option>
+        </select>
+      </div>
+
+      <!-- Table -->
+      <div class="card" style="padding:0;">
+        <div style="padding:16px 20px 0;">
+          <p class="table-count">Exibindo <span id="countDisplay">0</span> equipamento(s)</p>
+        </div>
+        <div class="table-wrapper">
+          <table id="equipTable">
+            <thead>
+              <tr>
+                <th>Equipamento</th>
+                <th>Nº Série / Patrimônio</th>
+                <th>Status</th>
+                <th>Usuário / Setor</th>
+                <th>Próx. Manutenção</th>
+                <th style="text-align:center;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="equipTableBody">
+              <tr><td colspan="6">
+                <div class="empty-state">
+                  <i class="fa-solid fa-circle-notch fa-spin"></i>
+                  <h3>Carregando...</h3>
+                </div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ── Modal: Cadastro / Edição ── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modalTitle">Novo Equipamento</h2>
+      <button class="modal-close" id="modalClose"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <form id="equipForm" novalidate>
+      <input type="hidden" id="equipId" />
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:12px;">
+        Identificação
+      </p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="fNome">Nome do Equipamento *</label>
+          <input class="form-control" type="text" id="fNome" placeholder="Ex: Notebook Dell XPS" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fMarca">Marca *</label>
+          <input class="form-control" type="text" id="fMarca" placeholder="Ex: Dell, HP, Lenovo" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fModelo">Modelo</label>
+          <input class="form-control" type="text" id="fModelo" placeholder="Ex: XPS 15 9500" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fNumSerie">Nº de Série</label>
+          <input class="form-control" type="text" id="fNumSerie" placeholder="Ex: SN-4859201" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fPatrimonio">Patrimônio</label>
+          <input class="form-control" type="text" id="fPatrimonio" placeholder="Ex: PAT-001" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fStatus">Status *</label>
+          <select class="form-control" id="fStatus" required>
+            <option value="Em Estoque">Em Estoque</option>
+            <option value="Em Uso">Em Uso</option>
+            <option value="Em Manutenção">Em Manutenção</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fSetor">Setor Atual</label>
+          <input class="form-control" type="text" id="fSetor" placeholder="Ex: TI, Administrativo" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fUsuario">Usuário Atual</label>
+          <input class="form-control" type="text" id="fUsuario" placeholder="Nome do responsável" />
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin:16px 0 12px;">
+        Identificação de Rede
+      </p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="fMac">MAC Address</label>
+          <input class="form-control" type="text" id="fMac" placeholder="Ex: A4:C3:F0:85:7D:11" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fNomePc">Nome do PC (hostname)</label>
+          <input class="form-control" type="text" id="fNomePc" placeholder="Ex: DESKTOP-ADM01" />
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin:16px 0 12px;">
+        Manutenção Preventiva
+      </p>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label" for="fIntervalo">Intervalo (dias)</label>
+          <input class="form-control" type="number" id="fIntervalo" placeholder="Ex: 180" min="1" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fUltimaManutencao">Última Manutenção</label>
+          <input class="form-control" type="date" id="fUltimaManutencao" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fProximaManutencao">Próxima Manutenção</label>
+          <input class="form-control" type="date" id="fProximaManutencao" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="fObs">Observações</label>
+        <textarea class="form-control" id="fObs" placeholder="Informações adicionais sobre o equipamento..."></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btnCancelar">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btnSalvar">
+          <i class="fa-solid fa-floppy-disk"></i> Salvar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Modal: Confirmação de Exclusão ── -->
+<div class="modal-overlay" id="confirmOverlay">
+  <div class="modal confirm-modal">
+    <div class="confirm-icon"><i class="fa-solid fa-trash"></i></div>
+    <h3>Excluir Equipamento?</h3>
+    <p id="confirmText">Esta ação não pode ser desfeita.</p>
+    <div class="modal-footer" style="justify-content:center;">
+      <button class="btn btn-secondary" id="btnConfirmNao">Cancelar</button>
+      <button class="btn btn-danger" id="btnConfirmSim">
+        <i class="fa-solid fa-trash"></i> Excluir
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<script type="module" src="js/equipamentos.js"></script>
+<script>
+  // Sidebar
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('sidebarToggle');
+  const toggleIcon = document.getElementById('toggleIcon');
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleIcon.className = sidebar.classList.contains('collapsed') ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left';
+    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+  });
+  if (localStorage.getItem('sidebarCollapsed') === 'true') {
+    sidebar.classList.add('collapsed');
+    toggleIcon.className = 'fa-solid fa-chevron-right';
+  }
+  document.getElementById('refreshBtn').addEventListener('click', () => location.reload());
+
+  // Toast global
+  function showToast(msg, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    const icons = { success: 'fa-circle-check', error: 'fa-circle-xmark', warning: 'fa-triangle-exclamation' };
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.success}" style="color:var(--${type === 'error' ? 'danger' : type});"></i> ${msg}`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+  }
+  window.showToast = showToast;
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Verifica se a requisição tem os campos básicos
+    function hasFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Regras para Equipamentos
+    match /equipamentos/{equipId} {
+      // Permite leitura para o Painel Web e para o Script Python (verificar MAC)
+      allow read: if true; 
+      
+      // Permite criação (Auto-cadastro do Script Python)
+      allow create: if hasFields(['mac_address', 'status', 'nome']);
+      
+      // Permite atualização de status e dados de uso (Script Python e Admin)
+      // Protege para que o MAC_ADDRESS nunca seja alterado após criado
+      allow update: if request.resource.data.mac_address == resource.data.mac_address;
+
+      // Apenas o Admin deve deletar (nesta fase, permitimos, mas com cautela)
+      allow delete: if true; 
+    }
+
+    // Regras para Movimentações (Logs)
+    match /movimentacoes/{movId} {
+      // Painel Admin lê, Script Python escreve
+      allow read: if true;
+      allow create: if hasFields(['equipamento_id', 'acao', 'timestamp']);
+      allow update, delete: if false; // Logs são imutáveis, nunca devem ser editados ou apagados
+    }
+
+    // Regras para Manutenções
+    match /manutencoes/{manId} {
+      allow read, write: if true;
+    }
+    
+    // Bloqueia qualquer outra coleção não especificada
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
