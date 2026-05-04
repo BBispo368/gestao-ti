@@ -313,6 +313,23 @@ manForm.addEventListener('submit', async (e) => {
       showToast('Manutenção cadastrada com sucesso!');
     }
 
+    // ── SINCRONIZAÇÃO DE STATUS DO EQUIPAMENTO ──
+    // Se a manutenção está ativa (Agendada/Pendente), o PC vai para "Em Manutenção"
+    // Se foi concluída agora, o PC volta para "Em Estoque"
+    let novoStatusEquip = null;
+    if (dados.status_manutencao === 'Concluída') {
+        novoStatusEquip = 'Em Estoque';
+    } else {
+        novoStatusEquip = 'Em Manutenção';
+    }
+
+    if (novoStatusEquip) {
+        await updateDoc(doc(db, 'equipamentos', equipId), {
+            status: novoStatusEquip,
+            data_atualizacao: serverTimestamp()
+        });
+    }
+
     // Sincronizar próxima manutenção no equipamento (se Concluída)
     if (dados.status_manutencao === 'Concluída' && F('chkAtualizarEquip').checked && dados.data_execucao) {
       const equipDoc = todosEquipamentos.find(eq => eq.id === equipId);
@@ -360,6 +377,14 @@ window.concluirManutencao = async (id) => {
         await updateDoc(doc(db, 'equipamentos', man.equipamento_id), {
           'manutencao_preventiva.ultima_manutencao':  hoje,
           'manutencao_preventiva.proxima_manutencao': proxima.toISOString().split('T')[0],
+          'status': 'Em Estoque',
+          'data_atualizacao': serverTimestamp()
+        });
+      } else {
+        // Mesmo sem intervalo, volta o status para Estoque
+        await updateDoc(doc(db, 'equipamentos', man.equipamento_id), {
+            'status': 'Em Estoque',
+            'data_atualizacao': serverTimestamp()
         });
       }
     }

@@ -31,7 +31,22 @@
     .filter-select:focus { outline: none; border-color: var(--accent); }
 
     .equip-name { font-weight: 600; font-size: 14px; }
-    .equip-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .equip-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    .action-btns { display: flex; gap: 6px; }
+    .btn-icon-sm {
+      width: 30px; height: 30px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text-secondary);
+      transition: all var(--transition);
+      cursor: pointer;
+    }
+    .btn-icon-sm:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+    .btn-icon-sm.del:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
 
     /* Estilo para indicação de vínculo */
     .vinculo-tag {
@@ -39,12 +54,20 @@
       align-items: center;
       gap: 5px;
       font-size: 11px;
-      padding: 2px 8px;
-      background: rgba(99,102,241,0.1);
+      padding: 2px 10px;
+      background: rgba(99,102,241,0.08);
       color: var(--accent);
       border-radius: 12px;
-      border: 1px solid rgba(99,102,241,0.2);
+      border: 1px solid rgba(99,102,241,0.15);
+      font-weight: 500;
     }
+
+    .table-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .table-count span { color: var(--accent); font-weight: 600; }
   </style>
 </head>
 <body>
@@ -72,6 +95,15 @@
         <li class="nav-item"><a href="manutencoes.html"><i class="fa-solid fa-screwdriver-wrench"></i><span>Manutenções</span></a></li>
       </ul>
     </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar">A</div>
+        <div class="user-details">
+          <div class="user-name">Administrador</div>
+          <div class="user-role">Painel Web</div>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <!-- Main Wrapper -->
@@ -82,34 +114,34 @@
       </div>
       <div class="header-right">
         <div class="status-indicator"><span class="status-dot"></span><span id="connectionStatus">Conectado</span></div>
-        <button class="header-btn" id="refreshBtn"><i class="fa-solid fa-rotate-right"></i></button>
+        <button class="header-btn" title="Recarregar" id="refreshBtn"><i class="fa-solid fa-rotate-right"></i></button>
       </div>
     </header>
 
     <main class="main-content">
       <div class="page-header">
         <div class="page-header-left">
-          <h1>Gestão de Periféricos</h1>
-          <p id="subtitleCount">0 periférico(s) cadastrado(s)</p>
+          <h1>Periféricos</h1>
+          <p id="subtitleCount">Carregando itens...</p>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-primary" id="btnNovoPeriferico"><i class="fa-solid fa-plus"></i> Novo Periférico</button>
         </div>
       </div>
 
-      <!-- KPI Cards simplificados -->
-      <div class="kpi-grid">
+      <!-- KPI Cards -->
+      <div class="kpi-grid" style="margin-bottom:20px;">
         <div class="kpi-card accent">
           <div class="kpi-icon"><i class="fa-solid fa-microchip"></i></div>
-          <div class="kpi-info"><div class="kpi-label">Total</div><div class="kpi-value" id="kTotal">0</div></div>
+          <div class="kpi-info"><div class="kpi-label">Total</div><div class="kpi-value" id="kTotal">—</div></div>
         </div>
         <div class="kpi-card success">
           <div class="kpi-icon"><i class="fa-solid fa-link"></i></div>
-          <div class="kpi-info"><div class="kpi-label">Vinculados</div><div class="kpi-value" id="kVinculados">0</div></div>
+          <div class="kpi-info"><div class="kpi-label">Vinculados</div><div class="kpi-value" id="kVinculados">—</div></div>
         </div>
         <div class="kpi-card warning">
           <div class="kpi-icon"><i class="fa-solid fa-link-slash"></i></div>
-          <div class="kpi-info"><div class="kpi-label">Avulsos</div><div class="kpi-value" id="kAvulsos">0</div></div>
+          <div class="kpi-info"><div class="kpi-label">Avulsos</div><div class="kpi-value" id="kAvulsos">—</div></div>
         </div>
       </div>
 
@@ -128,7 +160,10 @@
       </div>
 
       <!-- Tabela -->
-      <div class="card" style="padding:0; overflow:hidden;">
+      <div class="card" style="padding:0;">
+        <div style="padding:16px 20px 0;">
+          <p class="table-count">Exibindo <span id="countDisplay">0</span> item(s)</p>
+        </div>
         <div class="table-wrapper">
           <table>
             <thead>
@@ -141,7 +176,7 @@
               </tr>
             </thead>
             <tbody id="periTableBody">
-              <tr><td colspan="5"><div class="empty-state">Carregando...</div></td></tr>
+              <tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-circle-notch fa-spin"></i><h3>Carregando...</h3></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -152,56 +187,65 @@
 
 <!-- Modal Formulário -->
 <div class="modal-overlay" id="modalOverlay">
-  <div class="modal-content">
+  <div class="modal">
     <div class="modal-header">
-      <h2 id="modalTitle">Novo Periférico</h2>
-      <button class="modal-close" id="modalClose">&times;</button>
+      <h2 class="modal-title" id="modalTitle">Novo Periférico</h2>
+      <button class="modal-close" id="modalClose"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <form id="periForm" class="modal-body">
+    <form id="periForm" novalidate>
       <input type="hidden" id="periId">
+      
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:12px;">
+        Informações do Item
+      </p>
+      
       <div class="form-grid">
         <div class="form-group" style="grid-column: span 2;">
-          <label for="fNome">Nome do Item (ex: Rastreador, Maleta, Mouse)</label>
-          <input type="text" id="fNome" placeholder="Ex: Rastreador GPS" required>
+          <label class="form-label" for="fNome">Nome do Item *</label>
+          <input class="form-control" type="text" id="fNome" placeholder="Ex: Rastreador GPS, Maleta de Alumínio" required>
         </div>
         <div class="form-group">
-          <label for="fMarca">Marca</label>
-          <input type="text" id="fMarca" placeholder="Ex: Samsung">
+          <label class="form-label" for="fMarca">Marca</label>
+          <input class="form-control" type="text" id="fMarca" placeholder="Ex: Bosch, Samsung">
         </div>
         <div class="form-group">
-          <label for="fModelo">Modelo</label>
-          <input type="text" id="fModelo" placeholder="Ex: T1000">
+          <label class="form-label" for="fModelo">Modelo</label>
+          <input class="form-control" type="text" id="fModelo" placeholder="Ex: GT-100">
         </div>
         <div class="form-group">
-          <label for="fPatrimonio">Patrimônio</label>
-          <input type="text" id="fPatrimonio" placeholder="Ex: 001234">
+          <label class="form-label" for="fPatrimonio">Patrimônio</label>
+          <input class="form-control" type="text" id="fPatrimonio" placeholder="Ex: PER-001">
         </div>
         <div class="form-group">
-          <label for="fNumSerie">Nº de Série</label>
-          <input type="text" id="fNumSerie" placeholder="S/N">
+          <label class="form-label" for="fNumSerie">Nº de Série</label>
+          <input class="form-control" type="text" id="fNumSerie" placeholder="Ex: SN-123456">
         </div>
         <div class="form-group">
-          <label for="fStatus">Status</label>
-          <select id="fStatus">
+          <label class="form-label" for="fStatus">Status *</label>
+          <select class="form-control" id="fStatus" required>
             <option value="Em Estoque">Em Estoque</option>
             <option value="Em Uso">Em Uso</option>
             <option value="Em Manutenção">Em Manutenção</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="fVinculo">Vincular a Equipamento</label>
-          <select id="fVinculo">
+          <label class="form-label" for="fVinculo">Vincular a Equipamento</label>
+          <select class="form-control" id="fVinculo">
             <option value="">Nenhum (Item Avulso)</option>
           </select>
         </div>
-        <div class="form-group" style="grid-column: span 2;">
-          <label for="fObs">Observações</label>
-          <textarea id="fObs" rows="3" placeholder="Detalhes adicionais..."></textarea>
-        </div>
       </div>
+
+      <div class="form-group" style="margin-top:16px;">
+        <label class="form-label" for="fObs">Observações</label>
+        <textarea class="form-control" id="fObs" rows="3" placeholder="Informações adicionais sobre este item..."></textarea>
+      </div>
+
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" id="btnCancelar">Cancelar</button>
-        <button type="submit" class="btn btn-primary" id="btnSalvar">Salvar</button>
+        <button type="submit" class="btn btn-primary" id="btnSalvar">
+          <i class="fa-solid fa-floppy-disk"></i> Salvar
+        </button>
       </div>
     </form>
   </div>
@@ -209,12 +253,15 @@
 
 <!-- Modal Confirmar Exclusão -->
 <div class="modal-overlay" id="confirmOverlay">
-  <div class="modal-content modal-sm">
-    <div class="modal-header"><h2 style="color:var(--danger);">Excluir Item?</h2></div>
-    <div class="modal-body"><p id="confirmText"></p></div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" id="btnConfirmNao">Não, cancelar</button>
-      <button class="btn btn-danger" id="btnConfirmSim">Sim, excluir</button>
+  <div class="modal confirm-modal">
+    <div class="confirm-icon"><i class="fa-solid fa-trash"></i></div>
+    <h3 id="confirmTitle">Excluir Periférico?</h3>
+    <div class="modal-body"><p id="confirmText" style="text-align:center; color:var(--text-muted);"></p></div>
+    <div class="modal-footer" style="justify-content:center;">
+      <button class="btn btn-secondary" id="btnConfirmNao">Cancelar</button>
+      <button class="btn btn-danger" id="btnConfirmSim">
+        <i class="fa-solid fa-trash"></i> Excluir
+      </button>
     </div>
   </div>
 </div>

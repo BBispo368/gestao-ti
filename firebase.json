@@ -12,14 +12,21 @@
       ".venv/**",
       "venv/**",
       "python/**",
-      ".agents/**",
       ".gemini/**",
+      ".agents/**",
       "*.bat",
       "requirements.txt",
-      "public/**",
+      "skills-lock.json",
       "firestore.rules",
       "firestore.indexes.json",
-      ".firebaserc"
+      ".firebaserc",
+      "README.md",
+      "LICENSE",
+      ".gitignore",
+      "**/__pycache__/**",
+      "**/*.pyc",
+      "**/build/**",
+      "**/dist/**"
     ]
   }
 }

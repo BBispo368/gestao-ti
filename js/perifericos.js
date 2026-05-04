@@ -66,9 +66,13 @@ function abrirModal(modo = 'novo', dados = null) {
 function fecharModal() { modalOverlay.classList.remove('open'); }
 
 // ── Renderização ──────────────────────────────────────────────
-function statusBadge(status) {
+function statusBadge(status, herdado = false) {
   const map = { 'Em Uso': 'badge-success', 'Em Estoque': 'badge-accent', 'Em Manutenção': 'badge-warning' };
-  return `<span class="badge ${map[status] || 'badge-muted'}">${status || '—'}</span>`;
+  return `
+    <div style="display:flex; flex-direction:column; align-items:flex-start; gap:2px;">
+      <span class="badge ${map[status] || 'badge-muted'}">${status || '—'}</span>
+      ${herdado ? '<span style="font-size:9px; color:var(--accent); font-weight:600; margin-left:4px;">(Kit)</span>' : ''}
+    </div>`;
 }
 
 function renderTabela(lista) {
@@ -79,6 +83,11 @@ function renderTabela(lista) {
 
   tbody.innerHTML = lista.map(p => {
     const equip = todosEquipamentos.find(e => e.id === p.equipamento_id);
+    
+    // Lógica de Prioridade de Status: Se tem vínculo, segue o equipamento
+    const statusFinal = equip ? equip.status : p.status;
+    const isHerdado = !!equip;
+
     return `
       <tr>
         <td>
@@ -89,10 +98,10 @@ function renderTabela(lista) {
           <div style="font-size:13px;">S/N: ${p.num_serie || '—'}</div>
           <div class="equip-meta">Pat: ${p.patrimonio || '—'}</div>
         </td>
-        <td>${statusBadge(p.status)}</td>
+        <td>${statusBadge(statusFinal, isHerdado)}</td>
         <td>
           ${equip ? `
-            <div class="vinculo-tag">
+            <div class="vinculo-tag" title="Vinculado a: ${equip.nome}">
               <i class="fa-solid fa-link"></i> ${equip.nome}
             </div>
           ` : '<span class="text-muted text-sm">— Avulso —</span>'}
@@ -118,10 +127,20 @@ function atualizarStats(lista) {
 
 function filtrar() {
   const termo = searchInput.value.toLowerCase();
-  const status = filterStatus.value;
+  const statusFiltro = filterStatus.value;
+
   const filtrados = todosPerifericos.filter(p => {
-    const matchTermo = !termo || p.nome.toLowerCase().includes(termo) || p.patrimonio.toLowerCase().includes(termo) || p.num_serie.toLowerCase().includes(termo);
-    const matchStatus = !status || p.status === status;
+    // Busca o status herdado se houver vínculo
+    const equip = todosEquipamentos.find(e => e.id === p.equipamento_id);
+    const statusReal = equip ? equip.status : p.status;
+
+    const matchTermo = !termo || 
+      p.nome.toLowerCase().includes(termo) || 
+      p.patrimonio.toLowerCase().includes(termo) || 
+      p.num_serie.toLowerCase().includes(termo);
+      
+    const matchStatus = !statusFiltro || statusReal === statusFiltro;
+    
     return matchTermo && matchStatus;
   });
   renderTabela(filtrados);
@@ -180,13 +199,35 @@ F('btnConfirmSim').addEventListener('click', async () => {
 });
 
 // ── Inicialização ──────────────────────────────────────────────
-carregarEquipamentos();
-const q = query(collection(db, 'perifericos'), orderBy('data_cadastro', 'desc'));
-onSnapshot(q, (snap) => {
-  todosPerifericos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  atualizarStats(todosPerifericos);
-  filtrar();
-});
+async function init() {
+  try {
+    await carregarEquipamentos();
+  } catch (err) {
+    console.error('Erro ao carregar equipamentos:', err);
+  }
+
+  const q = query(collection(db, 'perifericos'), orderBy('data_cadastro', 'desc'));
+  
+  onSnapshot(q, (snap) => {
+    todosPerifericos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    atualizarStats(todosPerifericos);
+    filtrar();
+  }, (err) => {
+    console.error('Erro no listener de periféricos:', err);
+    // Tenta carregar sem o orderBy caso seja erro de índice
+    if (err.code === 'failed-precondition' || err.message.includes('index')) {
+      onSnapshot(collection(db, 'perifericos'), (s) => {
+        todosPerifericos = s.docs.map(d => ({ id: d.id, ...d.data() }));
+        atualizarStats(todosPerifericos);
+        filtrar();
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Erro ao carregar dados.</div></td></tr>`;
+    }
+  });
+}
+
+init();
 
 F('btnNovoPeriferico').addEventListener('click', () => abrirModal('novo'));
 F('modalClose').addEventListener('click', fecharModal);

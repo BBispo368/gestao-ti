@@ -16,9 +16,8 @@ service cloud.firestore {
       // Permite criação (Auto-cadastro do Script Python)
       allow create: if hasFields(['mac_address', 'status', 'nome']);
       
-      // Permite atualização de status e dados de uso (Script Python e Admin)
-      // Protege para que o MAC_ADDRESS nunca seja alterado após criado
-      allow update: if request.resource.data.mac_address == resource.data.mac_address;
+      // Permite atualização de status e dados (Script Python e Admin)
+      allow update: if true;
 
       // Apenas o Admin deve deletar (nesta fase, permitimos, mas com cautela)
       allow delete: if true; 
@@ -34,6 +33,11 @@ service cloud.firestore {
 
     // Regras para Manutenções
     match /manutencoes/{manId} {
+      allow read, write: if true;
+    }
+
+    // Regras para Periféricos
+    match /perifericos/{periId} {
       allow read, write: if true;
     }
     
