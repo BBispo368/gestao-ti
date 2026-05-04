@@ -214,6 +214,11 @@ function renderTabela(lista) {
       <td>${manutencaoLabel(e.manutencao_preventiva?.proxima_manutencao)}</td>
       <td style="text-align:center;">
         <div class="action-btns" style="justify-content:center;">
+          ${e.status === 'Em Uso' ? `
+            <button class="btn-icon-sm" style="color:var(--warning);border-color:var(--warning);" title="Finalizar Uso (Logoff)" onclick="finalizarUso('${e.id}')">
+              <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+          ` : ''}
           <button class="btn-icon-sm" title="Editar" onclick="editarEquipamento('${e.id}')">
             <i class="fa-solid fa-pen"></i>
           </button>
@@ -224,6 +229,43 @@ function renderTabela(lista) {
       </td>
     </tr>`).join('');
 }
+
+// ── Finalizar Uso (Logoff Manual) ─────────────────────────────
+window.finalizarUso = async (id) => {
+  const e = todosEquipamentos.find(item => item.id === id);
+  if (!e) return;
+
+  if (!confirm(`Deseja finalizar o uso de "${e.nome}" pelo usuário "${e.usuario_atual}"?`)) return;
+
+  try {
+    const agora = new Date();
+    
+    // 1. Atualizar Equipamento
+    await updateDoc(doc(db, 'equipamentos', id), {
+      status: 'Em Estoque',
+      usuario_atual: '',
+      setor_atual: '',
+      data_atualizacao: serverTimestamp()
+    });
+
+    // 2. Gerar Movimentação de Logoff
+    await addDoc(collection(db, 'movimentacoes'), {
+      equipamento_id: id,
+      nome_pc: e.nome_pc || '',
+      mac_address: e.mac_address || '',
+      usuario_nome: e.usuario_atual || 'N/A',
+      usuario_setor: e.setor_atual || 'N/A',
+      acao: 'logoff',
+      timestamp: serverTimestamp(),
+      origem: 'painel_web'
+    });
+
+    showToast(`Uso de "${e.nome}" finalizado com sucesso!`);
+  } catch (err) {
+    console.error(err);
+    showToast('Erro ao finalizar uso.', 'error');
+  }
+};
 
 // ── Atualizar KPIs e Setor Filter ────────────────────────────
 function atualizarKpisEFiltros(lista) {

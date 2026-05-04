@@ -8,13 +8,6 @@ import os
 from getmac import get_mac_address
 from datetime import datetime
 
-try:
-    import win32gui
-    import win32con
-    HAS_WIN32 = True
-except ImportError:
-    HAS_WIN32 = False
-
 # ============================================================
 # CONFIGURAÇÕES DO FIREBASE
 # ============================================================
@@ -244,53 +237,7 @@ class LoginKiosk(ctk.CTk):
 
     def release_pc(self):
         self.btn_acessar.configure(text="ACESSO LIBERADO!", fg_color="#10b981")
-        self.after(1000, self.hide_and_wait)
-
-    def hide_and_wait(self):
-        """Esconde a janela e fica em background para detectar logoff/shutdown"""
-        self.withdraw()
-        if HAS_WIN32:
-            self.setup_shutdown_handler()
-
-    def setup_shutdown_handler(self):
-        try:
-            hwnd = self.winfo_id()
-            self.old_wndproc = win32gui.SetWindowLong(hwnd, win32con.GWL_WNDPROC, self.wndproc)
-        except: pass
-
-    def wndproc(self, hwnd, msg, wparam, lparam):
-        if msg == win32con.WM_QUERYENDSESSION:
-            self.perform_logoff("shutdown")
-            return True
-        return win32gui.CallWindowProc(self.old_wndproc, hwnd, msg, wparam, lparam)
-
-    def perform_logoff(self, acao="logoff"):
-        if not self.logged_user or not self.equipamento_id: return
-        
-        try:
-            now = datetime.utcnow().isoformat() + "Z"
-            # 1. Limpa o status no Equipamento
-            update_url = f"{BASE_URL}/equipamentos/{self.equipamento_id}?updateMask.fieldPaths=status&updateMask.fieldPaths=usuario_atual&updateMask.fieldPaths=setor_atual&key={FIREBASE_API_KEY}"
-            requests.patch(update_url, json={"fields": {
-                "status": {"stringValue": "Disponível"}, 
-                "usuario_atual": {"stringValue": ""}, 
-                "setor_atual": {"stringValue": ""}
-            }}, timeout=5)
-            
-            # 2. Registra Movimentação de Logoff
-            mov_url = f"{BASE_URL}/movimentacoes?key={FIREBASE_API_KEY}"
-            requests.post(mov_url, json={"fields": {
-                "equipamento_id": {"stringValue": self.equipamento_id},
-                "nome_pc": {"stringValue": self.hostname},
-                "mac_address": {"stringValue": self.mac},
-                "usuario_nome": {"stringValue": self.logged_user},
-                "usuario_setor": {"stringValue": self.logged_setor or ""},
-                "acao": {"stringValue": acao},
-                "timestamp": {"timestampValue": now},
-                "origem": {"stringValue": "script_desktop"}
-            }}, timeout=5)
-        except:
-            pass
+        self.after(1000, self.destroy)
 
     def secret_bypass_click(self, event):
         """Segredo para encerrar o script: 10 cliques no logo"""
