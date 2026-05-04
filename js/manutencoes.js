@@ -311,6 +311,7 @@ manForm.addEventListener('submit', async (e) => {
         ...dados, data_cadastro: serverTimestamp()
       });
       showToast('Manutenção cadastrada com sucesso!');
+      await registrarMovimentacao(equipId, 'manutencao', `Nova manutenção: ${descricao}`);
     }
 
     // ── SINCRONIZAÇÃO DE STATUS DO EQUIPAMENTO ──
@@ -389,6 +390,7 @@ window.concluirManutencao = async (id) => {
       }
     }
     showToast('Manutenção marcada como Concluída!');
+    await registrarMovimentacao(man.equipamento_id, 'manutencao', `Manutenção concluída: ${man.descricao}`);
   } catch (err) {
     console.error(err);
     showToast('Erro ao concluir.', 'error');
@@ -444,6 +446,23 @@ document.getElementById('btnExportar').addEventListener('click', () => {
   URL.revokeObjectURL(url);
   showToast(`${lista.length} registros exportados!`);
 });
+
+// ── Registro de Movimentação ──────────────────────────────────
+async function registrarMovimentacao(equipId, acao, obs = '') {
+  try {
+    const equip = todosEquipamentos.find(e => e.id === equipId);
+    await addDoc(collection(db, 'movimentacoes'), {
+      equipamento_id:   equipId,
+      equipamento_nome: equip?.nome || 'Equipamento desconhecido',
+      usuario_nome:     'Sistema',
+      usuario_setor:    equip?.setor || 'TI',
+      acao:             acao, // 'manutencao'
+      origem:           'painel_web',
+      observacoes:      obs,
+      timestamp:        serverTimestamp()
+    });
+  } catch (err) { console.error('Erro ao registrar log:', err); }
+}
 
 // ── Listeners Firestore ───────────────────────────────────────
 // Equipamentos (para popular selects)

@@ -364,14 +364,14 @@ equipForm.addEventListener('submit', async (e) => {
         data_atualizacao: serverTimestamp()
       });
       showToast('Equipamento atualizado com sucesso!');
-    } else {
-      await addDoc(collection(db, 'equipamentos'), {
+      const docRef = await addDoc(collection(db, 'equipamentos'), {
         ...dados,
         data_cadastro: serverTimestamp(),
         data_ultima_ativacao: null,
         matricula_atual: null
       });
       showToast('Equipamento cadastrado com sucesso!');
+      await registrarMovimentacao(docRef.id, 'ativacao', 'Equipamento cadastrado manualmente');
     }
     fecharModal();
   } catch (err) {
@@ -409,3 +409,24 @@ document.getElementById('btnConfirmSim').addEventListener('click', async () => {
     btn.innerHTML = '<i class="fa-solid fa-trash"></i> Excluir';
   }
 });
+
+// ── Registro de Movimentação ──────────────────────────────────
+async function registrarMovimentacao(equipId, acao, obs = '') {
+  try {
+    const equip = todosEquipamentos.find(e => e.id === equipId);
+    await addDoc(collection(db, 'movimentacoes'), {
+      equipamento_id:   equipId,
+      equipamento_nome: equip?.nome || F('fNome').value || 'Novo Equipamento',
+      usuario_nome:     'Sistema',
+      usuario_setor:    equip?.setor_atual || F('fSetor').value || 'TI',
+      acao:             acao,
+      nome_pc:          equip?.nome_pc || F('fNomePc').value || '',
+      mac_address:      equip?.mac_address || F('fMac').value || '',
+      origem:           'painel_web',
+      observacoes:      obs,
+      timestamp:        serverTimestamp()
+    });
+  } catch (err) { console.error('Erro ao registrar log:', err); }
+}
+
+F('refreshBtn').addEventListener('click', () => location.reload());

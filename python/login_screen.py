@@ -129,6 +129,22 @@ class LoginKiosk(ctk.CTk):
             res_data = response.json()
             if 'name' in res_data:
                 self.equipamento_id = res_data['name'].split('/')[-1]
+                
+                # Registra evento de Ativação no Histórico
+                try:
+                    mov_url = f"{BASE_URL}/movimentacoes?key={FIREBASE_API_KEY}"
+                    requests.post(mov_url, json={"fields": {
+                        "equipamento_id": {"stringValue": self.equipamento_id},
+                        "nome_pc": {"stringValue": self.hostname},
+                        "mac_address": {"stringValue": self.mac},
+                        "usuario_nome": {"stringValue": "Sistema"},
+                        "usuario_setor": {"stringValue": "Auto-Cadastro"},
+                        "acao": {"stringValue": "ativacao"},
+                        "timestamp": {"timestampValue": now},
+                        "origem": {"stringValue": "script_desktop"}
+                    }}, timeout=5)
+                except: pass
+                
                 self.after(0, lambda: self.btn_acessar.configure(state="normal", text="LIBERAR COMPUTADOR"))
         except Exception:
             self.is_offline_mode = True
