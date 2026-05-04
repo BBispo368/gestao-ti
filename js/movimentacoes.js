@@ -71,7 +71,43 @@ function origemBadge(origem) {
     : `<span class="badge badge-muted"><i class="fa-solid fa-globe" style="margin-right:4px;"></i>Web</span>`;
 }
 
-// ── Filtros ───────────────────────────────────────────────────
+let todosEquipamentos = [];
+let todasManutencoes  = [];
+
+function consolidarDados() {
+  const logs = todasMovimentacoes.map(m => ({ ...m, source: 'log' }));
+  
+  const mans = todasManutencoes.map(m => {
+    const equip = todosEquipamentos.find(e => e.id === m.equipamento_id);
+    return {
+      id:               m.id,
+      timestamp:        m.data_cadastro || m.data_atualizacao,
+      equipamento_id:   m.equipamento_id,
+      equipamento_nome: equip?.nome || 'Equipamento',
+      nome_pc:          equip?.nome_pc || '',
+      mac_address:      equip?.mac_address || '',
+      usuario_nome:     'Técnico',
+      usuario_setor:    'TI',
+      acao:             'manutencao',
+      origem:           'painel_web',
+      observacoes:      `${m.tipo}: ${m.descricao} (${m.status_manutencao})`,
+      source:           'manutencao'
+    };
+  });
+
+  const base = [...logs, ...mans];
+  base.sort((a, b) => {
+    const tA = tsToDate(a.timestamp)?.getTime() || 0;
+    const tB = tsToDate(b.timestamp)?.getTime() || 0;
+    return tB - tA;
+  });
+
+  todasMovimentacoesConsolidadas = base;
+  aplicarFiltros();
+}
+
+let todasMovimentacoesConsolidadas = [];
+
 function aplicarFiltros() {
   const termo  = searchInput.value.toLowerCase().trim();
   const acao   = filterAcao.value;
@@ -80,7 +116,7 @@ function aplicarFiltros() {
   let de  = filterDe.value  ? new Date(filterDe.value  + 'T00:00:00') : null;
   let ate = filterAte.value ? new Date(filterAte.value + 'T23:59:59') : null;
 
-  filtradas = todasMovimentacoes.filter(m => {
+  filtradas = todasMovimentacoesConsolidadas.filter(m => {
     const ts = tsToDate(m.timestamp);
     if (de  && ts && ts < de)  return false;
     if (ate && ts && ts > ate) return false;
@@ -89,7 +125,7 @@ function aplicarFiltros() {
     if (termo) {
       const campos = [
         m.equipamento_nome, m.usuario_nome,
-        m.nome_pc, m.mac_address, m.usuario_setor
+        m.nome_pc, m.mac_address, m.usuario_setor, m.observacoes
       ].map(v => (v || '').toLowerCase());
       if (!campos.some(c => c.includes(termo))) return false;
     }
@@ -98,6 +134,7 @@ function aplicarFiltros() {
 
   paginaAtual = 0;
   atualizarStats();
+  atualizarFiltroSetor();
   renderTabela();
 }
 
@@ -150,7 +187,7 @@ function atualizarStats() {
 // ── Setor filter dinâmico ─────────────────────────────────────
 function atualizarFiltroSetor() {
   const setorAtual = filterSetor.value;
-  const setores = new Set(todasMovimentacoes.map(m => m.usuario_setor).filter(Boolean));
+  const setores = new Set(todasMovimentacoesConsolidadas.map(m => m.usuario_setor).filter(Boolean));
   filterSetor.innerHTML = '<option value="">Todos os setores</option>';
   [...setores].sort().forEach(s => {
     const opt = document.createElement('option');
@@ -275,29 +312,22 @@ document.getElementById('btnExportar').addEventListener('click', () => {
   showToast(`${lista.length} registros exportados com sucesso!`);
 });
 
-// ── Listener Firestore ────────────────────────────────────────
-const q = query(
-  collection(db, 'movimentacoes'),
-  orderBy('timestamp', 'desc'),
-  limit(2000)
-);
+// ── Listeners Firestore ───────────────────────────────────────
+onSnapshot(collection(db, 'equipamentos'), (snap) => {
+  todosEquipamentos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  consolidarDados();
+});
 
-onSnapshot(q, (snap) => {
+onSnapshot(collection(db, 'manutencoes'), (snap) => {
+  todasManutencoes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  consolidarDados();
+});
+
+onSnapshot(collection(db, 'movimentacoes'), (snap) => {
   todasMovimentacoes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  subtitleCount.textContent = `${todasMovimentacoes.length} registro(s) carregado(s)`;
-  atualizarFiltroSetor();
-  aplicarFiltros();
+  consolidarDados();
 }, (err) => {
-  console.error('Erro Firestore:', err);
+  console.error(err);
   document.getElementById('connectionStatus').textContent = 'Erro';
   document.querySelector('.status-dot').style.background = '#ef4444';
-  showToast('Erro ao conectar ao Firebase.', 'error');
-  tbody.innerHTML = `
-    <tr><td colspan="7">
-      <div class="empty-state">
-        <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger);opacity:1;"></i>
-        <h3>Erro de conexão</h3>
-        <p>Verifique as credenciais no firebase-config.js</p>
-      </div>
-    </td></tr>`;
 });
