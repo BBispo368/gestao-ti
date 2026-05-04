@@ -191,13 +191,34 @@ class LoginKiosk(ctk.CTk):
             requests.post(mov_url, json={"fields": {"equipamento_id": {"stringValue": self.equipamento_id}, "nome_pc": {"stringValue": self.hostname}, "mac_address": {"stringValue": self.mac}, "usuario_nome": {"stringValue": nome}, "usuario_setor": {"stringValue": setor}, "acao": {"stringValue": "login"}, "timestamp": {"timestampValue": now}, "origem": {"stringValue": "script_desktop"}}}, timeout=5)
             
             # Salva para logoff posterior
-            self.logged_user = nome
-            self.logged_setor = setor
-            
-            self.after(0, self.release_pc)
+            # Inicia monitoramento em segundo plano
+            self.after(10000, self.monitor_status)
+            self.after(0, self.withdraw) 
         except Exception:
             self.save_offline_log(nome, setor)
-            self.after(0, self.release_pc)
+            self.after(0, self.withdraw)
+
+    def monitor_status(self):
+        """Verifica se o status mudou para bloquear o PC novamente"""
+        if not self.equipamento_id: return
+        
+        try:
+            url = f"{BASE_URL}/equipamentos/{self.equipamento_id}?key={FIREBASE_API_KEY}"
+            response = requests.get(url, timeout=5)
+            data = response.json()
+            
+            if 'fields' in data:
+                status = data['fields'].get('status', {}).get('stringValue')
+                if status != "Em Uso":
+                    # Volta a tela de login
+                    self.after(0, self.deiconify)
+                    self.after(0, lambda: self.attributes("-topmost", True))
+                    self.after(0, lambda: self.btn_acessar.configure(text="LIBERAR COMPUTADOR"))
+                    return # Para o monitoramento enquanto estiver visível
+        except: pass
+        
+        # Continua monitorando se estiver escondido
+        self.after(10000, self.monitor_status)
 
     def save_offline_log(self, nome, setor):
         log_entry = {

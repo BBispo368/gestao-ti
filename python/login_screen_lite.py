@@ -185,12 +185,34 @@ class LoginScreenLite(tk.Tk):
                 }}, timeout=5)
                 
                 messagebox.showinfo("Sucesso", "Acesso liberado! Bom trabalho.")
-                self.destroy()
+                
+                # Em vez de fechar, esconde e monitora
+                self.withdraw()
+                self.after(10000, self.monitor_status)
+                
             except:
                 messagebox.showinfo("Offline", "Login registrado localmente. Bom trabalho!")
-                self.destroy()
+                self.withdraw()
+                self.after(10000, self.monitor_status)
         else:
             self.destroy()
+
+    def monitor_status(self):
+        """Verifica se o status mudou para bloquear o PC novamente (Lite)"""
+        if not self.equipamento_id: return
+        try:
+            url = f"{BASE_URL}/equipamentos/{self.equipamento_id}?key={FIREBASE_API_KEY}"
+            response = requests.get(url, timeout=5)
+            data = response.json()
+            if 'fields' in data:
+                status = data['fields'].get('status', {}).get('stringValue')
+                if status != "Em Uso":
+                    self.deiconify()
+                    self.attributes("-topmost", True)
+                    self.btn_acessar.config(text="LIBERAR COMPUTADOR")
+                    return
+        except: pass
+        self.after(10000, self.monitor_status)
 
 if __name__ == "__main__":
     # Tenta ler a key de um arquivo se existir
