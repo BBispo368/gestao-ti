@@ -168,9 +168,9 @@ periForm.addEventListener('submit', async (e) => {
     if (modoEdicao) {
       await updateDoc(doc(db, 'perifericos', periId.value), dados);
       showToast('Periférico atualizado!');
-    } else {
-      await addDoc(collection(db, 'perifericos'), { ...dados, data_cadastro: serverTimestamp() });
+      const docRef = await addDoc(collection(db, 'perifericos'), { ...dados, data_cadastro: serverTimestamp() });
       showToast('Periférico cadastrado!');
+      await registrarMovimentacao(docRef.id, 'ativacao', `Novo Periférico: ${dados.nome}`);
     }
     fecharModal();
   } catch (err) {
@@ -225,6 +225,23 @@ async function init() {
       tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Erro ao carregar dados.</div></td></tr>`;
     }
   });
+}
+
+// ── Registro de Movimentação ──────────────────────────────────
+async function registrarMovimentacao(id, acao, obs = '') {
+  try {
+    const nome = F('fNome').value || 'Periférico';
+    await addDoc(collection(db, 'movimentacoes'), {
+      equipamento_id:   id,
+      equipamento_nome: nome,
+      usuario_nome:     'Sistema',
+      usuario_setor:    'TI',
+      acao:             acao,
+      origem:           'painel_web',
+      observacoes:      obs,
+      timestamp:        serverTimestamp()
+    });
+  } catch (err) { console.error('Erro ao registrar log:', err); }
 }
 
 init();

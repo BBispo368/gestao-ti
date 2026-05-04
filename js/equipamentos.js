@@ -419,14 +419,21 @@ document.getElementById('btnConfirmSim').addEventListener('click', async () => {
 async function registrarMovimentacao(equipId, acao, obs = '') {
   try {
     const equip = todosEquipamentos.find(e => e.id === equipId);
+    
+    // Pega dados do formulário se o equipamento for novo e ainda não estiver na lista global
+    const nome = equip?.nome || F('fNome').value || 'Equipamento';
+    const pc   = equip?.nome_pc || F('fNomePc').value || '';
+    const mac  = equip?.mac_address || F('fMac').value || '';
+    const setor= equip?.setor_atual || F('fSetor').value || 'TI';
+
     await addDoc(collection(db, 'movimentacoes'), {
       equipamento_id:   equipId,
-      equipamento_nome: equip?.nome || F('fNome').value || 'Novo Equipamento',
+      equipamento_nome: nome,
       usuario_nome:     'Sistema',
-      usuario_setor:    equip?.setor_atual || F('fSetor').value || 'TI',
+      usuario_setor:    setor,
       acao:             acao,
-      nome_pc:          equip?.nome_pc || F('fNomePc').value || '',
-      mac_address:      equip?.mac_address || F('fMac').value || '',
+      nome_pc:          pc,
+      mac_address:      mac,
       origem:           'painel_web',
       observacoes:      obs,
       timestamp:        serverTimestamp()
