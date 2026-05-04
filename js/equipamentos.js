@@ -9,6 +9,7 @@ import {
 
 // ── Estado ───────────────────────────────────────────────────
 let todosEquipamentos = [];
+let todosPerifericos = [];
 let equipIdParaDeletar = null;
 let modoEdicao = false;
 
@@ -205,6 +206,15 @@ function renderTabela(lista) {
       <td>
         <div style="font-size:13px;">${e.num_serie || '—'}</div>
         <div class="equip-meta">${e.patrimonio ? 'Pat: ' + e.patrimonio : ''}</div>
+        
+        <!-- Exibição do Kit (Periféricos Vinculados) -->
+        <div class="kit-container" style="margin-top:6px; display:flex; flex-wrap:wrap; gap:4px;">
+          ${todosPerifericos.filter(p => p.equipamento_id === e.id).map(p => `
+            <span class="badge badge-muted" style="font-size:9px; padding:1px 6px; border:1px solid var(--border-strong);">
+              <i class="fa-solid fa-microchip" style="font-size:8px;"></i> ${p.nome}
+            </span>
+          `).join('')}
+        </div>
       </td>
       <td>${statusBadge(e.status)}</td>
       <td>
@@ -308,6 +318,12 @@ onSnapshot(q, (snap) => {
   showToast('Erro ao carregar dados do Firebase.', 'error');
   document.getElementById('connectionStatus').textContent = 'Erro';
   document.querySelector('.status-dot').style.background = '#ef4444';
+});
+
+// Listener de Periféricos (para atualizar os kits em tempo real)
+onSnapshot(collection(db, 'perifericos'), (snap) => {
+  todosPerifericos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  filtrarEExibir();
 });
 
 // ── Salvar (criar ou editar) ──────────────────────────────────
