@@ -389,6 +389,7 @@ equipForm.addEventListener('submit', async (e) => {
         data_atualizacao: serverTimestamp()
       });
       showToast('Equipamento atualizado com sucesso!');
+    } else {
       const docRef = await addDoc(collection(db, 'equipamentos'), {
         ...dados,
         data_cadastro: serverTimestamp(),

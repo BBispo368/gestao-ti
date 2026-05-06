@@ -14,9 +14,13 @@ try:
     ctypes.windll.kernel32.SetPriorityClass(ctypes.windll.kernel32.GetCurrentProcess(), 0x00004000)
 except: pass
 
+import sys
+import subprocess
+
 # ============================================================
-# CONFIGURAÇÕES DO FIREBASE
+# CONFIGURAÇÕES E VERSÃO
 # ============================================================
+VERSION = "1.0.0" # Incremente isso a cada nova versão
 FIREBASE_PROJECT_ID = "gestao-ti-bd"
 FIREBASE_API_KEY    = "AIzaSyBgscAf7JfiiEwLNC2QC5HMLiWo_lKvMvI"
 BASE_URL = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents"
@@ -67,6 +71,10 @@ class LoginKiosk(ctk.CTk):
         
         # Tenta sincronizar dados pendentes antes de começar
         threading.Thread(target=self.sync_offline_data, daemon=True).start()
+        
+        # Inicia verificação de atualização em background
+        threading.Thread(target=self.check_for_updates, daemon=True).start()
+        
         self.check_registration()
 
     def setup_ui(self):
@@ -303,6 +311,59 @@ class LoginKiosk(ctk.CTk):
 
     def _reset_clicks(self):
         self.logo_clicks = 0
+
+    # ============================================================
+    # LÓGICA DE AUTO-UPDATE
+    # ============================================================
+    def check_for_updates(self):
+        try:
+            # Consulta o Firestore pela configuração de versão
+            # Espera um documento em: configuracoes/versao_desktop
+            url = f"{BASE_URL}/configuracoes/versao_desktop?key={FIREBASE_API_KEY}"
+            response = requests.get(url, timeout=10)
+            data = response.json()
+            
+            if 'fields' in data:
+                latest_version = data['fields'].get('versao', {}).get('stringValue')
+                download_url = data['fields'].get('url_download', {}).get('stringValue')
+                
+                if latest_version and latest_version != VERSION and download_url:
+                    print(f"Atualização encontrada: {latest_version}")
+                    self.perform_update(download_url)
+        except Exception as e:
+            print(f"Erro ao verificar atualização: {e}")
+
+    def perform_update(self, url):
+        try:
+            # 1. Caminho do executável atual
+            current_exe = sys.executable
+            temp_exe = current_exe + ".new"
+            
+            # 2. Download da nova versão
+            response = requests.get(url, stream=True, timeout=30)
+            with open(temp_exe, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk: f.write(chunk)
+            
+            # 3. Cria script batch para substituição
+            # O script espera 3 segundos, deleta o atual, renomeia o novo e reinicia
+            bat_content = f'''@echo off
+timeout /t 3 /nobreak > nul
+del "{current_exe}"
+move "{temp_exe}" "{current_exe}"
+start "" "{current_exe}"
+del "%~f0"
+'''
+            bat_path = os.path.join(os.path.dirname(current_exe), "update_temp.bat")
+            with open(bat_path, "w") as f:
+                f.write(bat_content)
+            
+            # 4. Executa o batch e encerra o programa atual
+            subprocess.Popen([bat_path], shell=True)
+            self.after(0, self.destroy)
+            
+        except Exception as e:
+            print(f"Falha no processo de update: {e}")
 
 if __name__ == "__main__":
     LoginKiosk().mainloop()

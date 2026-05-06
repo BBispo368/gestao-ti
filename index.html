@@ -71,7 +71,11 @@
         <div class="user-details">
           <div class="user-name">Administrador</div>
           <div class="user-role">Painel Web</div>
+          <button class="edit-profile-link" onclick="openProfileModal()">Editar Perfil</button>
         </div>
+        <button class="logout-btn" onclick="logout()" title="Sair do sistema">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
       </div>
     </div>
   </aside>
@@ -229,6 +233,26 @@
   </div><!-- /main-wrapper -->
 </div><!-- /app-shell -->
 
+<!-- Modal de Perfil -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Meu Perfil</h2>
+      <button class="modal-close" onclick="closeProfileModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nome de Exibição</label>
+        <input type="text" id="profileNameInput" class="form-control" placeholder="Seu nome completo">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeProfileModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="handleProfileUpdate()">Salvar Alterações</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast Container -->
 <div id="toast-container"></div>
 
@@ -236,6 +260,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 
 <!-- Firebase + Dashboard JS -->
+<script type="module" src="js/auth.js"></script>
 <script type="module" src="js/dashboard.js"></script>
 
 <!-- Sidebar Toggle -->
