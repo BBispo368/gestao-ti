@@ -1,0 +1,10 @@
+{
+  "fields": {
+    "versao": {
+      "stringValue": "1.0.1"
+    },
+    "url_download": {
+      "stringValue": "https://github.com/BBispo368/gestao-ti/raw/main/python/dist/AcessoTI.exe"
+    }
+  }
+}

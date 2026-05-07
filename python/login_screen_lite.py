@@ -6,6 +6,15 @@ import json
 import ctypes
 from datetime import datetime, timezone
 from getmac import get_mac_address
+import os
+import sys
+import subprocess
+import threading
+
+# ============================================================
+# CONFIGURAÇÕES E VERSÃO (LITE)
+# ============================================================
+VERSION_LITE = "1.0.1"
 
 # Otimização: Define prioridade baixa para o processo (0x00004000 = BELOW_NORMAL_PRIORITY_CLASS)
 try:
@@ -27,7 +36,7 @@ class LoginScreenLite(tk.Tk):
         # Modo Kiosk (Tela Cheia)
         self.attributes("-fullscreen", True)
         self.attributes("-topmost", True)
-        self.overrideredirect(True) # Remove bordas e botões
+        # self.overrideredirect(True) # Comentado para garantir que a janela apareça no Win7
         
         self.configure(bg="#1e293b") # Fundo escuro atrás do card
         
@@ -40,9 +49,15 @@ class LoginScreenLite(tk.Tk):
         # Rota de fuga secreta
         self.secret_clicks = 0
         
+        # Contador de falhas de rede
+        self.network_failures = 0
+        
         # UI Setup
         self.setup_ui()
-        self.check_device_registration()
+        
+        # Inicia verificação de atualização e registro em background
+        threading.Thread(target=self.check_for_updates, daemon=True).start()
+        threading.Thread(target=self.check_device_registration, daemon=True).start()
 
     def setup_ui(self):
         # Centralizador
@@ -113,12 +128,11 @@ class LoginScreenLite(tk.Tk):
             if results and 'document' in results[0]:
                 doc = results[0]['document']
                 self.equipamento_id = doc['name'].split('/')[-1]
-                self.btn_acessar.config(state="normal", text="LIBERAR COMPUTADOR")
+                self.after(0, lambda: self.btn_acessar.config(state="normal", text="LIBERAR COMPUTADOR"))
             else:
                 self._auto_register()
         except Exception as e:
-            messagebox.showwarning("Modo Offline", "Não foi possível conectar ao servidor. O acesso será registrado localmente.")
-            self.btn_acessar.config(state="normal", text="LIBERAR (OFFLINE)", bg="#f59e0b")
+            self.after(0, lambda: self.btn_acessar.config(state="normal", text="LIBERAR (OFFLINE)", bg="#f59e0b"))
 
     def _auto_register(self):
         try:
@@ -152,9 +166,9 @@ class LoginScreenLite(tk.Tk):
                     }}, timeout=5)
                 except: pass
 
-                self.btn_acessar.config(state="normal", text="LIBERAR COMPUTADOR")
+                self.after(0, lambda: self.btn_acessar.config(state="normal", text="LIBERAR COMPUTADOR"))
         except:
-            self.btn_acessar.config(state="normal", text="LIBERAR (OFFLINE)", bg="#f59e0b")
+            self.after(0, lambda: self.btn_acessar.config(state="normal", text="LIBERAR (OFFLINE)", bg="#f59e0b"))
 
     def handle_secret_exit(self, event=None):
         self.secret_clicks += 1
@@ -206,24 +220,78 @@ class LoginScreenLite(tk.Tk):
             self.destroy()
 
     def monitor_status(self):
-        """Verifica se o status mudou para bloquear o PC novamente (Lite)"""
+        """Verifica se o status mudou para bloquear o PC novamente (Lite) - Com resiliência de rede"""
         if not self.equipamento_id: return
         try:
             url = f"{BASE_URL}/equipamentos/{self.equipamento_id}?key={FIREBASE_API_KEY}"
-            response = http.get(url, timeout=5)
+            # Timeout aumentado para 15s para conexões lentas
+            response = http.get(url, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.network_failures = 0 # Reseta se conectar com sucesso
+                
+                if 'fields' in data:
+                    status = data['fields'].get('status', {}).get('stringValue')
+                    if status != "Em Uso":
+                        self.after(0, self.deiconify)
+                        self.after(0, self.focus_force)
+                        self.after(0, lambda: self.attributes("-topmost", True))
+                        self.after(0, lambda: self.btn_acessar.config(text="LIBERAR COMPUTADOR", state="normal"))
+                        self.after(0, lambda: self.entry_nome.delete(0, tk.END))
+                        self.after(0, lambda: self.entry_setor.delete(0, tk.END))
+                        return
+            else:
+                self.network_failures += 1
+                
+        except Exception:
+            self.network_failures += 1
+            
+        # Continua monitorando se estiver escondido (check a cada 30 segundos)
+        self.after(30000, self.monitor_status)
+
+    # ============================================================
+    # LÓGICA DE AUTO-UPDATE (LITE)
+    # ============================================================
+    def check_for_updates(self):
+        try:
+            # Espera um documento em: configuracoes/versao_lite
+            url = f"{BASE_URL}/configuracoes/versao_lite?key={FIREBASE_API_KEY}"
+            response = requests.get(url, timeout=10)
             data = response.json()
+            
             if 'fields' in data:
-                status = data['fields'].get('status', {}).get('stringValue')
-                if status != "Em Uso":
-                    self.deiconify()
-                    self.focus_force()
-                    self.attributes("-topmost", True)
-                    self.btn_acessar.config(text="LIBERAR COMPUTADOR", state="normal")
-                    self.entry_nome.delete(0, tk.END)
-                    self.entry_setor.delete(0, tk.END)
-                    return
+                latest_version = data['fields'].get('versao', {}).get('stringValue')
+                download_url = data['fields'].get('url_download', {}).get('stringValue')
+                
+                if latest_version and latest_version != VERSION_LITE and download_url:
+                    self.perform_update(download_url)
         except: pass
-        self.after(10000, self.monitor_status)
+
+    def perform_update(self, url):
+        try:
+            current_exe = sys.executable
+            temp_exe = current_exe + ".new"
+            
+            response = requests.get(url, stream=True, timeout=30)
+            with open(temp_exe, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk: f.write(chunk)
+            
+            bat_content = f'''@echo off
+timeout /t 3 /nobreak > nul
+del "{current_exe}"
+move "{temp_exe}" "{current_exe}"
+start "" "{current_exe}"
+del "%~f0"
+'''
+            bat_path = os.path.join(os.path.dirname(current_exe), "update_lite.bat")
+            with open(bat_path, "w") as f:
+                f.write(bat_content)
+            
+            subprocess.Popen([bat_path], shell=True)
+            self.after(0, self.destroy)
+        except: pass
 
 if __name__ == "__main__":
     # Tenta ler a key de um arquivo se existir

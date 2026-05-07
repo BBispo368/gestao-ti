@@ -41,6 +41,12 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
+    // Regras para Configurações (Versão do Desktop)
+    match /configuracoes/{configId} {
+      allow read: if true;
+      allow write: if false; // Apenas via console ou admin
+    }
+
     // Bloqueia qualquer outra coleção não especificada
     match /{path=**} {
       allow read, write: if false;

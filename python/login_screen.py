@@ -20,7 +20,7 @@ import subprocess
 # ============================================================
 # CONFIGURAÇÕES E VERSÃO
 # ============================================================
-VERSION = "1.0.0" # Incremente isso a cada nova versão
+VERSION = "1.0.1" # Incremente isso a cada nova versão
 FIREBASE_PROJECT_ID = "gestao-ti-bd"
 FIREBASE_API_KEY    = "AIzaSyBgscAf7JfiiEwLNC2QC5HMLiWo_lKvMvI"
 BASE_URL = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents"
@@ -54,6 +54,9 @@ class LoginKiosk(ctk.CTk):
         self.last_user = None
         self.last_setor = None
         self.last_status = None
+        
+        # Contador de falhas de rede para evitar bloqueio indevido
+        self.network_failures = 0
         
         # Dados do usuário atual (para logoff no shutdown)
         self.logged_user = None
@@ -216,28 +219,43 @@ class LoginKiosk(ctk.CTk):
             self.after(0, self.withdraw)
 
     def monitor_status(self):
-        """Verifica se o status mudou para bloquear o PC novamente"""
+        """Verifica se o status mudou para bloquear o PC novamente, com tolerância a falhas de rede"""
         if not self.equipamento_id: return
         
         try:
             url = f"{BASE_URL}/equipamentos/{self.equipamento_id}?key={FIREBASE_API_KEY}"
-            response = http.get(url, timeout=5)
-            data = response.json()
+            # Aumentado timeout para 15s devido a internet instável
+            response = http.get(url, timeout=15)
             
-            if 'fields' in data:
-                status = data['fields'].get('status', {}).get('stringValue')
-                if status != "Em Uso":
-                    # Volta a tela de login
-                    self.after(0, self.deiconify)
-                    self.after(0, self.focus_force)
-                    self.after(0, lambda: self.attributes("-topmost", True))
-                    self.after(0, lambda: self.btn_acessar.configure(text="LIBERAR COMPUTADOR", state="normal"))
-                    self.after(0, lambda: self.entry_nome.delete(0, tk.END))
-                    self.after(0, lambda: self.entry_setor.delete(0, tk.END))
-                    return # Para o monitoramento enquanto estiver visível
-        except: pass
+            if response.status_code == 200:
+                data = response.json()
+                self.network_failures = 0 # Reseta contador se a conexão teve sucesso
+                
+                if 'fields' in data:
+                    status = data['fields'].get('status', {}).get('stringValue')
+                    if status != "Em Uso":
+                        # Volta a tela de login
+                        self.after(0, self.deiconify)
+                        self.after(0, self.focus_force)
+                        self.after(0, lambda: self.attributes("-topmost", True))
+                        self.after(0, lambda: self.btn_acessar.configure(text="LIBERAR COMPUTADOR", state="normal"))
+                        self.after(0, lambda: self.entry_nome.delete(0, tk.END))
+                        self.after(0, lambda: self.entry_setor.delete(0, tk.END))
+                        return # Para o monitoramento enquanto estiver visível
+            else:
+                # Se não for 200, conta como falha mas não bloqueia imediatamente
+                self.network_failures += 1
+                
+        except Exception:
+            # Erro de conexão (timeout, DNS, etc)
+            self.network_failures += 1
         
-        # Continua monitorando se estiver escondido
+        # Se falhar mais de 5 vezes seguidas (aprox. 2.5 minutos de queda total), 
+        # poderíamos tomar uma decisão, mas por enquanto apenas continuamos tentando.
+        if self.network_failures > 5:
+            print(f"Alerta: {self.network_failures} falhas de conexão seguidas.")
+
+        # Continua monitorando se estiver escondido (check a cada 30 segundos)
         self.after(30000, self.monitor_status)
 
     def save_offline_log(self, nome, setor):

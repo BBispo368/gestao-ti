@@ -11,16 +11,15 @@ if not exist "..\.venv" (
     exit
 )
 
-echo Instalando/Atualizando PyInstaller...
-..\.venv\Scripts\pip install pyinstaller
+echo Instalando dependencias no Python 3.8 (32-bits)...
+py -3.8-32 -m pip install pyinstaller requests getmac
 
 echo.
-echo Gerando .exe com PyInstaller...
+echo Gerando .exe com PyInstaller (Usando Python 3.8 - 32 bits)...
 echo (Isso pode levar alguns minutos...)
 
-:: O comando agora usa o caminho relativo do ambiente virtual atual
-..\.venv\Scripts\pyinstaller --noconfirm --onefile --windowed --name "AcessoTI_Lite" ^
---add-data "..\.venv\Lib\site-packages\customtkinter;customtkinter/" ^
+:: O comando agora usa o Python 3.8 32-bits
+py -3.8-32 -m PyInstaller --noconfirm --onefile --windowed --name "AcessoTI_Lite" ^
 --icon="app_icon.ico" ^
 login_screen_lite.py
 

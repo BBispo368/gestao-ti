@@ -1,6 +1,5 @@
 // ============================================================
 //  firebase-config.js
-//  Substitua com suas credenciais do Firebase Console
 // ============================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
