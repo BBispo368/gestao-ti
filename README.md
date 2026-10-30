@@ -1,3 +1,5 @@
+🌐 **English** | [Português](README.pt-BR.md)
+
 # IT Asset Manager (Gestão de TI)
 
 > A real-time IT asset management system I built and run as the sole IT professional at a diesel-pump service company in Brazil.
